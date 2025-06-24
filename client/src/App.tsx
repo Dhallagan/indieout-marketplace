@@ -21,6 +21,7 @@ import StoreDetailPage from '@/pages/StoreDetailPage'
 import CartPage from '@/pages/CartPage'
 import CheckoutPage from '@/pages/CheckoutPage'
 import CheckoutSuccessPage from '@/pages/CheckoutSuccessPage'
+import GuestOrderTrackingPage from '@/pages/GuestOrderTrackingPage'
 import ProtectedRoute from '@/components/ProtectedRoute'
 
 function App() {
@@ -133,6 +134,7 @@ function App() {
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
+            <Route path="/track-order" element={<GuestOrderTrackingPage />} />
           </Routes>
         </Layout>
       } />

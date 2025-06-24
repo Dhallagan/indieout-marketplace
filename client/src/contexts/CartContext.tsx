@@ -1,11 +1,11 @@
 import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
-import { Cart, CartItem, CartContextType } from '@/types/cart'
+import { LocalCart, LocalCartItem, CartContextType } from '@/types/cart'
 import { Product } from '@/types/api-generated'
 
 const CART_STORAGE_KEY = 'indieout_cart'
 
 // Initial cart state
-const initialCart: Cart = {
+const initialCart: LocalCart = {
   items: [],
   totalItems: 0,
   totalPrice: 0,
@@ -18,16 +18,16 @@ type CartAction =
   | { type: 'REMOVE_FROM_CART'; payload: { itemId: string } }
   | { type: 'UPDATE_QUANTITY'; payload: { itemId: string; quantity: number } }
   | { type: 'CLEAR_CART' }
-  | { type: 'LOAD_CART'; payload: Cart }
+  | { type: 'LOAD_CART'; payload: LocalCart }
 
 // Cart reducer
-function cartReducer(state: Cart, action: CartAction): Cart {
+function cartReducer(state: LocalCart, action: CartAction): LocalCart {
   switch (action.type) {
     case 'ADD_TO_CART': {
       const { product, quantity } = action.payload
       const existingItem = state.items.find(item => item.product.id === product.id)
       
-      let newItems: CartItem[]
+      let newItems: LocalCartItem[]
       
       if (existingItem) {
         // Update existing item quantity
@@ -38,7 +38,7 @@ function cartReducer(state: Cart, action: CartAction): Cart {
         )
       } else {
         // Add new item
-        const newItem: CartItem = {
+        const newItem: LocalCartItem = {
           id: `${product.id}-${Date.now()}`,
           product,
           quantity,
@@ -83,9 +83,9 @@ function cartReducer(state: Cart, action: CartAction): Cart {
 }
 
 // Helper function to calculate cart totals
-function calculateCartTotals(cart: Cart): Cart {
+function calculateCartTotals(cart: LocalCart): LocalCart {
   const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0)
-  const totalPrice = cart.items.reduce((sum, item) => sum + (item.product.base_price * item.quantity), 0)
+  const totalPrice = cart.items.reduce((sum, item) => sum + (Number(item.product.base_price) * item.quantity), 0)
   
   return {
     ...cart,
@@ -153,7 +153,7 @@ export function CartProvider({ children }: CartProviderProps) {
     return cart.items.some(item => item.product.id === productId)
   }
   
-  const getCartItem = (productId: string): CartItem | undefined => {
+  const getCartItem = (productId: string): LocalCartItem | undefined => {
     return cart.items.find(item => item.product.id === productId)
   }
   

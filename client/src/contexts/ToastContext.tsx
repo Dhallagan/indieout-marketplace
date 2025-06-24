@@ -52,7 +52,7 @@ function ToastContainer({ toasts, onRemove }: { toasts: Toast[], onRemove: (id: 
       {toasts.map(toast => (
         <div
           key={toast.id}
-          className={`max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto overflow-hidden border-l-4 ${
+          className={`w-full max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl bg-white shadow-lg rounded-lg pointer-events-auto overflow-hidden border-l-4 ${
             toast.type === 'success' ? 'border-forest-500' :
             toast.type === 'error' ? 'border-red-500' :
             toast.type === 'warning' ? 'border-yellow-500' :
@@ -83,8 +83,8 @@ function ToastContainer({ toasts, onRemove }: { toasts: Toast[], onRemove: (id: 
                   </svg>
                 )}
               </div>
-              <div className="ml-3 w-0 flex-1">
-                <p className="text-sm font-medium text-charcoal-900">
+              <div className="ml-3 flex-1 min-w-0">
+                <p className="text-sm font-medium text-charcoal-900 whitespace-nowrap">
                   {toast.message}
                 </p>
               </div>

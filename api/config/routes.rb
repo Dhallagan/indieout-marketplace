@@ -88,6 +88,27 @@ Rails.application.routes.draw do
         end
       end
 
+      # Cart management (authenticated users)
+      get 'cart', to: 'carts#show'
+      post 'cart/items', to: 'carts#add_item'
+      put 'cart/items/:id', to: 'carts#update_item'
+      delete 'cart/items/:id', to: 'carts#remove_item'
+      delete 'cart', to: 'carts#clear'
+
+      # Order management (authenticated users)
+      resources :orders, only: [:index, :show, :create] do
+        member do
+          patch :cancel
+          patch :fulfill  # for store owners
+        end
+      end
+
+      # Guest checkout (no authentication required)
+      namespace :guest do
+        post 'orders', to: 'guest_orders#create'
+        get 'orders/:order_number', to: 'guest_orders#show'
+      end
+
       # File uploads (seller only)
       resources :uploads, only: [:create]
       delete 'uploads/:filename', to: 'uploads#destroy'

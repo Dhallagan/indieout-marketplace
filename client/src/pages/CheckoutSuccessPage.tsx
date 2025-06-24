@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 
 export default function CheckoutSuccessPage() {
   const location = useLocation()
-  const { orderTotal, orderNumber } = location.state || {}
+  const { orderTotal, orderNumber, isGuest } = location.state || {}
 
   useEffect(() => {
     // Clear any stored cart data since order is complete
@@ -86,6 +86,32 @@ export default function CheckoutSuccessPage() {
             </div>
           </div>
 
+          {/* Guest Checkout Info */}
+          {isGuest && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+              <div className="flex items-start space-x-3">
+                <svg className="w-6 h-6 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <h4 className="font-medium text-blue-900 mb-2">Guest Order Information</h4>
+                  <p className="text-sm text-blue-800 mb-2">
+                    Since you checked out as a guest, you can track your order using:
+                  </p>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li>• <strong>Order Number:</strong> {orderNumber}</li>
+                    <li>• <strong>Email Address:</strong> The email you provided during checkout</li>
+                  </ul>
+                  <p className="text-sm text-blue-800 mt-3">
+                    <Link to="/track-order" className="font-medium underline hover:no-underline">
+                      Use our order tracking page
+                    </Link> to check your order status anytime.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
@@ -98,15 +124,27 @@ export default function CheckoutSuccessPage() {
               <span>Continue Shopping</span>
             </Link>
             
-            <Link
-              to="/dashboard"
-              className="border-2 border-forest-600 text-forest-600 px-8 py-3 rounded-lg font-semibold hover:bg-forest-50 transition-colors inline-flex items-center justify-center space-x-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-              <span>View Orders</span>
-            </Link>
+            {isGuest ? (
+              <Link
+                to="/track-order"
+                className="border-2 border-forest-600 text-forest-600 px-8 py-3 rounded-lg font-semibold hover:bg-forest-50 transition-colors inline-flex items-center justify-center space-x-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-6-6.72" />
+                </svg>
+                <span>Track Your Order</span>
+              </Link>
+            ) : (
+              <Link
+                to="/dashboard"
+                className="border-2 border-forest-600 text-forest-600 px-8 py-3 rounded-lg font-semibold hover:bg-forest-50 transition-colors inline-flex items-center justify-center space-x-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <span>View Orders</span>
+              </Link>
+            )}
           </div>
 
           {/* Support Info */}

@@ -8,6 +8,7 @@ export default function CartPage() {
   const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const [isClearing, setIsClearing] = useState(false)
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false)
 
   const handleQuantityChange = (itemId: string, newQuantity: number) => {
     updateQuantity(itemId, newQuantity)
@@ -27,11 +28,21 @@ export default function CartPage() {
   }
 
   const handleCheckout = () => {
-    if (!isAuthenticated) {
-      navigate('/login', { state: { returnTo: '/checkout' } })
-      return
+    if (isAuthenticated) {
+      navigate('/checkout')
+    } else {
+      setShowCheckoutModal(true)
     }
+  }
+
+  const handleContinueAsGuest = () => {
+    setShowCheckoutModal(false)
     navigate('/checkout')
+  }
+
+  const handleSignIn = () => {
+    setShowCheckoutModal(false)
+    navigate('/login', { state: { returnTo: '/checkout' } })
   }
 
   const getImageSrc = (imageUrl?: string) => {
@@ -185,10 +196,10 @@ export default function CartPage() {
                           
                           <div className="text-right ml-4">
                             <div className="font-semibold text-lg text-charcoal-900">
-                              ${(item.product.base_price * item.quantity).toFixed(2)}
+                              ${(Number(item.product.base_price) * item.quantity).toFixed(2)}
                             </div>
                             <div className="text-sm text-charcoal-500">
-                              ${item.product.base_price.toFixed(2)} each
+                              ${Number(item.product.base_price).toFixed(2)} each
                             </div>
                           </div>
                         </div>
@@ -268,7 +279,7 @@ export default function CartPage() {
               
               {!isAuthenticated && (
                 <p className="text-xs text-charcoal-500 mt-3 text-center">
-                  You'll be asked to sign in during checkout
+                  Continue as guest or sign in during checkout
                 </p>
               )}
               
@@ -299,6 +310,82 @@ export default function CartPage() {
           </div>
         </div>
       </div>
+
+      {/* Checkout Modal */}
+      {showCheckoutModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6 relative">
+            {/* Close button */}
+            <button
+              onClick={() => setShowCheckoutModal(false)}
+              className="absolute top-4 right-4 text-charcoal-400 hover:text-charcoal-600 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Modal content */}
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-charcoal-900 mb-6">Go to checkout</h2>
+              
+              {/* Continue as guest button */}
+              <button
+                onClick={handleContinueAsGuest}
+                className="w-full bg-white border-2 border-charcoal-900 text-charcoal-900 py-3 px-6 rounded-full font-semibold hover:bg-charcoal-50 transition-colors mb-4"
+              >
+                Continue as a guest
+              </button>
+              
+              <div className="text-sm text-charcoal-500 mb-4">OR</div>
+              
+              {/* Sign in section */}
+              <div className="text-left mb-6">
+                <h3 className="font-semibold text-charcoal-900 mb-4">Sign in or register</h3>
+                
+                <div className="space-y-3">
+                  <button
+                    onClick={handleSignIn}
+                    className="w-full bg-charcoal-900 text-white py-3 px-6 rounded-full font-semibold hover:bg-charcoal-800 transition-colors"
+                  >
+                    Sign in with email
+                  </button>
+                  
+                  <button
+                    disabled
+                    className="w-full border border-charcoal-300 text-charcoal-400 py-3 px-6 rounded-full font-semibold opacity-50 cursor-not-allowed flex items-center justify-center space-x-2"
+                  >
+                    <span>🔍</span>
+                    <span>Continue with Google</span>
+                  </button>
+                  
+                  <button
+                    disabled
+                    className="w-full border border-charcoal-300 text-charcoal-400 py-3 px-6 rounded-full font-semibold opacity-50 cursor-not-allowed flex items-center justify-center space-x-2"
+                  >
+                    <span>📘</span>
+                    <span>Continue with Facebook</span>
+                  </button>
+                  
+                  <button
+                    disabled
+                    className="w-full border border-charcoal-300 text-charcoal-400 py-3 px-6 rounded-full font-semibold opacity-50 cursor-not-allowed flex items-center justify-center space-x-2"
+                  >
+                    <span>🍎</span>
+                    <span>Continue with Apple</span>
+                  </button>
+                </div>
+              </div>
+              
+              <p className="text-xs text-charcoal-500">
+                By clicking Continue or Continue with Google, Facebook, or Apple, you agree to IndieOut's{' '}
+                <a href="/terms" className="text-forest-600 hover:underline">Terms of Use</a> and{' '}
+                <a href="/privacy" className="text-forest-600 hover:underline">Privacy Policy</a>.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

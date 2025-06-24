@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_06_24_021736) do
+ActiveRecord::Schema[7.1].define(version: 2025_06_24_135310) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -35,6 +35,27 @@ ActiveRecord::Schema[7.1].define(version: 2025_06_24_021736) do
     t.index ["page"], name: "index_banners_on_page"
     t.index ["position"], name: "index_banners_on_position"
     t.index ["start_date", "end_date"], name: "index_banners_on_start_date_and_end_date"
+  end
+
+  create_table "cart_items", id: :string, force: :cascade do |t|
+    t.string "cart_id", null: false
+    t.string "product_id", null: false
+    t.integer "quantity", default: 1, null: false
+    t.datetime "added_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["cart_id", "product_id"], name: "index_cart_items_on_cart_id_and_product_id", unique: true
+    t.index ["cart_id"], name: "index_cart_items_on_cart_id"
+    t.index ["product_id"], name: "index_cart_items_on_product_id"
+  end
+
+  create_table "carts", id: :string, force: :cascade do |t|
+    t.string "user_id", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["expires_at"], name: "index_carts_on_expires_at"
+    t.index ["user_id"], name: "index_carts_on_user_id"
   end
 
   create_table "categories", id: :string, force: :cascade do |t|
@@ -64,6 +85,48 @@ ActiveRecord::Schema[7.1].define(version: 2025_06_24_021736) do
     t.string "featured_collection_title"
     t.string "featured_collection_subtitle"
     t.string "featured_collection_image"
+  end
+
+  create_table "order_items", id: :string, force: :cascade do |t|
+    t.string "order_id", null: false
+    t.string "product_id", null: false
+    t.integer "quantity", null: false
+    t.decimal "unit_price", precision: 10, scale: 2, null: false
+    t.decimal "total_price", precision: 10, scale: 2, null: false
+    t.json "product_snapshot", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["order_id", "product_id"], name: "index_order_items_on_order_id_and_product_id", unique: true
+    t.index ["order_id"], name: "index_order_items_on_order_id"
+    t.index ["product_id"], name: "index_order_items_on_product_id"
+  end
+
+  create_table "orders", id: :string, force: :cascade do |t|
+    t.string "user_id", null: false
+    t.string "store_id", null: false
+    t.string "status", default: "pending", null: false
+    t.string "order_number", null: false
+    t.decimal "subtotal", precision: 10, scale: 2, null: false
+    t.decimal "shipping_cost", precision: 10, scale: 2, default: "0.0"
+    t.decimal "tax_amount", precision: 10, scale: 2, default: "0.0"
+    t.decimal "total_amount", precision: 10, scale: 2, null: false
+    t.json "shipping_address", null: false
+    t.json "billing_address"
+    t.string "payment_method"
+    t.string "payment_status", default: "pending"
+    t.string "payment_reference"
+    t.text "notes"
+    t.datetime "fulfilled_at"
+    t.datetime "cancelled_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["order_number"], name: "index_orders_on_order_number", unique: true
+    t.index ["payment_status"], name: "index_orders_on_payment_status"
+    t.index ["status"], name: "index_orders_on_status"
+    t.index ["store_id", "created_at"], name: "index_orders_on_store_id_and_created_at"
+    t.index ["store_id"], name: "index_orders_on_store_id"
+    t.index ["user_id", "created_at"], name: "index_orders_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_orders_on_user_id"
   end
 
   create_table "product_images", id: :string, force: :cascade do |t|
@@ -214,7 +277,14 @@ ActiveRecord::Schema[7.1].define(version: 2025_06_24_021736) do
     t.index ["password_reset_token"], name: "index_users_on_password_reset_token"
   end
 
+  add_foreign_key "cart_items", "carts"
+  add_foreign_key "cart_items", "products"
+  add_foreign_key "carts", "users"
   add_foreign_key "categories", "categories", column: "parent_id"
+  add_foreign_key "order_items", "orders"
+  add_foreign_key "order_items", "products"
+  add_foreign_key "orders", "stores"
+  add_foreign_key "orders", "users"
   add_foreign_key "product_images", "products"
   add_foreign_key "product_variants", "products"
   add_foreign_key "products", "categories"

@@ -6,10 +6,10 @@ class User < ApplicationRecord
 
   # Associations
   has_one :store, foreign_key: :owner_id, dependent: :destroy
+  has_one :cart, dependent: :destroy
+  has_many :orders, dependent: :destroy
   has_many :addresses, dependent: :destroy
-  has_many :orders, foreign_key: :customer_id, dependent: :destroy
   has_many :reviews, dependent: :destroy
-  has_many :cart_items, dependent: :destroy
   has_many :wishlist_items, dependent: :destroy
 
   # Validations
@@ -51,6 +51,10 @@ class User < ApplicationRecord
     self.email_verified = true
     self.email_verification_token = nil
     save!
+  end
+
+  def current_cart
+    cart || create_cart(expires_at: 30.days.from_now)
   end
 
   private

@@ -153,6 +153,110 @@ export interface Product {
 `;
 }
 
+function generateCartTypes() {
+  return `
+export interface Cart {
+  id: string;
+  user_id: string;
+  expires_at: string;
+  created_at: string;
+  updated_at: string;
+  total_items: number;
+  total_price: number;
+  expired: boolean;
+  cart_items: CartItem[];
+}
+
+export interface CartItem {
+  id: string;
+  cart_id: string;
+  product_id: string;
+  quantity: number;
+  added_at: string;
+  total_price: number;
+  product: Product;
+}
+`;
+}
+
+function generateOrderTypes() {
+  return `
+export enum OrderStatus {
+  PENDING = 'pending',
+  CONFIRMED = 'confirmed',
+  PROCESSING = 'processing',
+  SHIPPED = 'shipped',
+  DELIVERED = 'delivered',
+  CANCELLED = 'cancelled',
+  REFUNDED = 'refunded',
+}
+
+export enum PaymentStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  PAID = 'paid',
+  FAILED = 'failed',
+  REFUNDED = 'refunded',
+}
+
+export interface ShippingAddress {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  address1: string;
+  address2?: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+}
+
+export interface Order {
+  id: string;
+  user_id: string;
+  store_id: string;
+  order_number: string;
+  status: OrderStatus;
+  payment_status: PaymentStatus;
+  subtotal: number;
+  shipping_cost: number;
+  tax_amount: number;
+  total_amount: number;
+  shipping_address: ShippingAddress;
+  billing_address?: ShippingAddress;
+  payment_method?: string;
+  payment_reference?: string;
+  notes?: string;
+  fulfilled_at?: string;
+  cancelled_at?: string;
+  created_at: string;
+  updated_at: string;
+  total_items: number;
+  formatted_shipping_address: string;
+  formatted_billing_address?: string;
+  can_cancel: boolean;
+  can_fulfill: boolean;
+  store: Store;
+  order_items: OrderItem[];
+}
+
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  product_id: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  product_snapshot: any;
+  product_name: string;
+  product_sku?: string;
+  product_image?: string;
+  product: Product;
+}
+`;
+}
+
 // Main function to generate all types
 function generateTypes() {
   const typeDefinitions = [
@@ -160,6 +264,8 @@ function generateTypes() {
     generateStoreTypes(),
     generateCategoryTypes(),
     generateProductTypes(),
+    generateCartTypes(),
+    generateOrderTypes(),
   ].join('\n');
 
   const outputPath = path.join(__dirname, '../client/src/types/api-generated.ts');

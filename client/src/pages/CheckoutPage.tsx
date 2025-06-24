@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '@/contexts/CartContext'
 import { useAuth } from '@/hooks/useAuth'
+import { guestOrderService } from '@/services/guestOrderService'
+import { useToast } from '@/contexts/ToastContext'
 
 interface ShippingAddress {
   firstName: string
@@ -26,10 +28,12 @@ interface PaymentInfo {
 export default function CheckoutPage() {
   const { cart, clearCart } = useCart()
   const { user, isAuthenticated } = useAuth()
+  const { addToast } = useToast()
   const navigate = useNavigate()
   
   const [currentStep, setCurrentStep] = useState(1)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isGuestCheckout, setIsGuestCheckout] = useState(false)
   
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     firstName: user?.firstName || '',
@@ -58,12 +62,12 @@ export default function CheckoutPage() {
     }
   }, [cart.items.length, navigate])
 
-  // Redirect if not authenticated
+  // Initialize guest checkout if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/login', { state: { returnTo: '/checkout' } })
+      setIsGuestCheckout(true)
     }
-  }, [isAuthenticated, navigate])
+  }, [isAuthenticated])
 
   const subtotal = cart.totalPrice
   const shipping = subtotal >= 100 ? 0 : 9.99
@@ -80,23 +84,47 @@ export default function CheckoutPage() {
     setIsProcessing(true)
     
     try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // TODO: Integrate with actual payment processor
-      // For MVP, we'll just simulate success
-      
-      // Clear cart and redirect to success
-      clearCart()
-      navigate('/checkout/success', { 
-        state: { 
-          orderTotal: total,
-          orderNumber: `ORD-${Date.now()}` 
-        } 
-      })
+      if (isGuestCheckout) {
+        // Guest checkout flow
+        const guestOrderData = {
+          email: shippingAddress.email,
+          shipping_address: shippingAddress,
+          billing_address: shippingAddress, // Use shipping as billing for now
+          payment_method: 'card', // TODO: Get from payment form
+          cart_items: guestOrderService.convertCartItems(cart.items)
+        }
+
+        const orders = await guestOrderService.createGuestOrder(guestOrderData)
+        
+        // Clear cart and redirect to success
+        clearCart()
+        navigate('/checkout/success', { 
+          state: { 
+            orderTotal: total,
+            orderNumber: orders[0]?.order_number || `ORD-${Date.now()}`,
+            isGuest: true
+          } 
+        })
+      } else {
+        // Authenticated user flow (existing logic)
+        // Simulate payment processing
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        
+        // TODO: Integrate with actual payment processor and authenticated order creation
+        
+        // Clear cart and redirect to success
+        clearCart()
+        navigate('/checkout/success', { 
+          state: { 
+            orderTotal: total,
+            orderNumber: `ORD-${Date.now()}`,
+            isGuest: false
+          } 
+        })
+      }
     } catch (error) {
-      console.error('Payment failed:', error)
-      alert('Payment failed. Please try again.')
+      console.error('Order creation failed:', error)
+      addToast(error instanceof Error ? error.message : 'Failed to create order. Please try again.', 'error')
     } finally {
       setIsProcessing(false)
     }
@@ -118,7 +146,21 @@ export default function CheckoutPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-charcoal-900">Checkout</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold text-charcoal-900">Checkout</h1>
+            
+            {isGuestCheckout && (
+              <div className="text-right">
+                <p className="text-sm text-charcoal-600 mb-2">Checking out as guest</p>
+                <button
+                  onClick={() => navigate('/login', { state: { returnTo: '/checkout' } })}
+                  className="text-sm text-forest-600 hover:text-forest-700 font-medium"
+                >
+                  Have an account? Sign in
+                </button>
+              </div>
+            )}
+          </div>
           
           {/* Progress Steps */}
           <div className="mt-6">
@@ -161,12 +203,63 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2">
-            {/* Step 1: Shipping Information */}
+            {/* Step 1: Contact & Shipping Information */}
             {currentStep === 1 && (
-              <div className="bg-white rounded-lg shadow-card p-6">
-                <h2 className="text-xl font-semibold text-charcoal-900 mb-6">Shipping Information</h2>
-                
-                <form onSubmit={handleShippingSubmit} className="space-y-4">
+              <div className="space-y-6">
+                {/* Express Checkout Options */}
+                {isGuestCheckout && (
+                  <div className="bg-white rounded-lg shadow-card p-6">
+                    <h2 className="text-lg font-semibold text-charcoal-900 mb-4">Express Checkout</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <button className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2">
+                        <span>🅿️</span>
+                        <span>PayPal</span>
+                      </button>
+                      <button className="w-full bg-black hover:bg-gray-800 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2">
+                        <span>🍎</span>
+                        <span>Apple Pay</span>
+                      </button>
+                    </div>
+                    <div className="text-center text-sm text-charcoal-500 my-4">— OR —</div>
+                  </div>
+                )}
+
+                {/* Contact Information */}
+                <div className="bg-white rounded-lg shadow-card p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-charcoal-900">Contact Information</h2>
+                    {isGuestCheckout && (
+                      <button
+                        type="button"
+                        onClick={() => navigate('/login', { state: { returnTo: '/checkout' } })}
+                        className="text-sm text-forest-600 hover:text-forest-700 font-medium"
+                      >
+                        Sign in for faster checkout
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-charcoal-700 mb-1">
+                      Email Address *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={shippingAddress.email}
+                      onChange={(e) => setShippingAddress({...shippingAddress, email: e.target.value})}
+                      placeholder="Enter your email for order updates"
+                      className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
+                    />
+                    <p className="text-xs text-charcoal-500 mt-1">We'll send order confirmations and updates to this email</p>
+                  </div>
+                </div>
+
+                {/* Shipping Information */}
+                <div className="bg-white rounded-lg shadow-card p-6">
+                  <h2 className="text-lg font-semibold text-charcoal-900 mb-6">Shipping Address</h2>
+                  
+                  <form onSubmit={handleShippingSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-charcoal-700 mb-1">
@@ -193,19 +286,6 @@ export default function CheckoutPage() {
                         className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
                       />
                     </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-charcoal-700 mb-1">
-                      Email Address *
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={shippingAddress.email}
-                      onChange={(e) => setShippingAddress({...shippingAddress, email: e.target.value})}
-                      className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
-                    />
                   </div>
                   
                   <div>
@@ -295,21 +375,133 @@ export default function CheckoutPage() {
                     </button>
                   </div>
                 </form>
+                </div>
+
+                {/* Shipping Options */}
+                <div className="bg-white rounded-lg shadow-card p-6">
+                  <h2 className="text-lg font-semibold text-charcoal-900 mb-4">Shipping & Delivery Options</h2>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-4 border border-charcoal-200 rounded-lg hover:border-forest-400 cursor-pointer transition-colors">
+                      <div className="flex items-center">
+                        <input
+                          type="radio"
+                          name="shipping"
+                          value="standard"
+                          defaultChecked
+                          className="w-4 h-4 text-forest-600 focus:ring-forest-500"
+                        />
+                        <div className="ml-3">
+                          <p className="font-medium text-charcoal-900">Standard Shipping</p>
+                          <p className="text-sm text-charcoal-600">5-7 business days</p>
+                        </div>
+                      </div>
+                      <span className="font-semibold text-forest-600">FREE</span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-4 border border-charcoal-200 rounded-lg hover:border-forest-400 cursor-pointer transition-colors">
+                      <div className="flex items-center">
+                        <input
+                          type="radio"
+                          name="shipping"
+                          value="expedited"
+                          className="w-4 h-4 text-forest-600 focus:ring-forest-500"
+                        />
+                        <div className="ml-3">
+                          <p className="font-medium text-charcoal-900">Expedited Shipping</p>
+                          <p className="text-sm text-charcoal-600">2-3 business days</p>
+                        </div>
+                      </div>
+                      <span className="font-semibold text-charcoal-900">$9.99</span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-4 border border-charcoal-200 rounded-lg hover:border-forest-400 cursor-pointer transition-colors">
+                      <div className="flex items-center">
+                        <input
+                          type="radio"
+                          name="shipping"
+                          value="overnight"
+                          className="w-4 h-4 text-forest-600 focus:ring-forest-500"
+                        />
+                        <div className="ml-3">
+                          <p className="font-medium text-charcoal-900">Overnight Delivery</p>
+                          <p className="text-sm text-charcoal-600">Next business day</p>
+                        </div>
+                      </div>
+                      <span className="font-semibold text-charcoal-900">$24.99</span>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      💡 <strong>Free shipping</strong> on orders over $100 with standard delivery
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
             {/* Step 2: Payment Information */}
             {currentStep === 2 && (
               <div className="bg-white rounded-lg shadow-card p-6">
-                <h2 className="text-xl font-semibold text-charcoal-900 mb-6">Payment Information</h2>
+                <h2 className="text-xl font-semibold text-charcoal-900 mb-6">Payment</h2>
                 
-                <form onSubmit={handlePaymentSubmit} className="space-y-4">
+                <form onSubmit={handlePaymentSubmit} className="space-y-6">
                   <div className="bg-sand-50 rounded-lg p-4 mb-6">
                     <div className="flex items-center text-sm text-charcoal-600">
                       <svg className="w-4 h-4 mr-2 text-forest-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                       </svg>
                       <span>This is a demo checkout. No real payment will be processed.</span>
+                    </div>
+                  </div>
+
+                  {/* Payment Method Selection */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-4 border-2 border-forest-500 bg-forest-50 rounded-lg">
+                      <div className="flex items-center">
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="card"
+                          defaultChecked
+                          className="w-4 h-4 text-forest-600 focus:ring-forest-500"
+                        />
+                        <span className="ml-3 font-medium text-charcoal-900">💳 Credit Card</span>
+                      </div>
+                      <div className="flex space-x-2">
+                        <span className="text-xs bg-blue-100 px-2 py-1 rounded">VISA</span>
+                        <span className="text-xs bg-red-100 px-2 py-1 rounded">MC</span>
+                        <span className="text-xs bg-blue-100 px-2 py-1 rounded">AMEX</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-4 border border-charcoal-200 rounded-lg hover:border-forest-400 cursor-pointer transition-colors opacity-60">
+                      <div className="flex items-center">
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="paypal"
+                          disabled
+                          className="w-4 h-4 text-forest-600 focus:ring-forest-500"
+                        />
+                        <span className="ml-3 font-medium text-charcoal-900">🅿️ PayPal</span>
+                      </div>
+                      <span className="text-xs text-charcoal-500">Coming Soon</span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-4 border border-charcoal-200 rounded-lg hover:border-forest-400 cursor-pointer transition-colors opacity-60">
+                      <div className="flex items-center">
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="applepay"
+                          disabled
+                          className="w-4 h-4 text-forest-600 focus:ring-forest-500"
+                        />
+                        <span className="ml-3 font-medium text-charcoal-900">🍎 Apple Pay</span>
+                      </div>
+                      <span className="text-xs text-charcoal-500">Coming Soon</span>
                     </div>
                   </div>
                   
@@ -369,6 +561,50 @@ export default function CheckoutPage() {
                       />
                     </div>
                   </div>
+
+                  {/* Billing Address */}
+                  <div className="pt-6 border-t border-sand-200">
+                    <h3 className="text-lg font-semibold text-charcoal-900 mb-4">Billing Address</h3>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center p-4 border-2 border-forest-500 bg-forest-50 rounded-lg">
+                        <input
+                          type="radio"
+                          name="billingAddress"
+                          value="same"
+                          defaultChecked
+                          className="w-4 h-4 text-forest-600 focus:ring-forest-500"
+                        />
+                        <span className="ml-3 font-medium text-charcoal-900">Same as shipping address</span>
+                      </div>
+                      
+                      <div className="flex items-center p-4 border border-charcoal-200 rounded-lg hover:border-forest-400 cursor-pointer transition-colors opacity-60">
+                        <input
+                          type="radio"
+                          name="billingAddress"
+                          value="different"
+                          disabled
+                          className="w-4 h-4 text-forest-600 focus:ring-forest-500"
+                        />
+                        <span className="ml-3 font-medium text-charcoal-900">Use different billing address</span>
+                        <span className="ml-auto text-xs text-charcoal-500">Coming Soon</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Save Payment Method */}
+                  <div className="pt-4 border-t border-sand-200">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 text-forest-600 border-charcoal-300 rounded focus:ring-forest-500"
+                      />
+                      <span className="text-sm text-charcoal-700">Save payment method for future orders</span>
+                    </label>
+                    <p className="text-xs text-charcoal-500 mt-1 ml-6">
+                      {isGuestCheckout ? 'Create an account to save payment methods' : 'Your payment information will be securely stored'}
+                    </p>
+                  </div>
                   
                   <div className="flex justify-between pt-6">
                     <button
@@ -382,19 +618,19 @@ export default function CheckoutPage() {
                     <button
                       type="submit"
                       disabled={isProcessing}
-                      className="bg-forest-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-forest-700 disabled:bg-charcoal-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                      className="bg-forest-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-forest-700 disabled:bg-charcoal-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2 text-lg"
                     >
                       {isProcessing ? (
                         <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-b-transparent"></div>
-                          <span>Processing...</span>
+                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-b-transparent"></div>
+                          <span>Processing Order...</span>
                         </>
                       ) : (
                         <>
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                           </svg>
-                          <span>Complete Order</span>
+                          <span>Complete Order - ${total.toFixed(2)}</span>
                         </>
                       )}
                     </button>
@@ -427,7 +663,7 @@ export default function CheckoutPage() {
                       </p>
                     </div>
                     <p className="text-sm font-medium text-charcoal-900">
-                      ${(item.product.base_price * item.quantity).toFixed(2)}
+                      ${(Number(item.product.base_price) * item.quantity).toFixed(2)}
                     </p>
                   </div>
                 ))}
