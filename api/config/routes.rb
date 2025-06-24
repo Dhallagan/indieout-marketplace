@@ -103,6 +103,13 @@ Rails.application.routes.draw do
         end
       end
 
+      # Address management (authenticated users)
+      resources :addresses do
+        member do
+          post :set_default
+        end
+      end
+
       # Guest checkout (no authentication required)
       namespace :guest do
         post 'orders', to: 'guest_orders#create'

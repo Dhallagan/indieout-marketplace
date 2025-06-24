@@ -9,6 +9,7 @@ class Cart < ApplicationRecord
   scope :expired, -> { where('expires_at <= ?', Time.current) }
 
   before_create :set_expiration
+  before_create :set_cuid_id
 
   def total_items
     cart_items.sum(:quantity)
@@ -62,5 +63,9 @@ class Cart < ApplicationRecord
 
   def set_expiration
     self.expires_at ||= 30.days.from_now
+  end
+
+  def set_cuid_id
+    self.id = SecureRandom.urlsafe_base64(12) if id.blank?
   end
 end

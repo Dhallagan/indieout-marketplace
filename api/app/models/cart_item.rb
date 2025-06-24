@@ -6,6 +6,7 @@ class CartItem < ApplicationRecord
   validates :added_at, presence: true
 
   before_validation :set_added_at, on: :create
+  before_create :set_cuid_id
 
   def total_price
     quantity * product.base_price
@@ -23,5 +24,9 @@ class CartItem < ApplicationRecord
 
   def set_added_at
     self.added_at ||= Time.current
+  end
+
+  def set_cuid_id
+    self.id = SecureRandom.urlsafe_base64(12) if id.blank?
   end
 end

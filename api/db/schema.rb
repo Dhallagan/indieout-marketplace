@@ -10,9 +10,26 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_06_24_135310) do
+ActiveRecord::Schema[7.1].define(version: 2025_06_24_170944) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "addresses", id: :string, force: :cascade do |t|
+    t.string "user_id", null: false
+    t.string "full_name", null: false
+    t.string "address_line_1", null: false
+    t.string "address_line_2"
+    t.string "city", null: false
+    t.string "state", null: false
+    t.string "zip_code", null: false
+    t.string "country", default: "US", null: false
+    t.string "phone"
+    t.boolean "is_default", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "is_default"], name: "index_addresses_on_user_id_and_is_default"
+    t.index ["user_id"], name: "index_addresses_on_user_id"
+  end
 
   create_table "banners", id: :string, force: :cascade do |t|
     t.string "title", null: false
@@ -277,6 +294,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_06_24_135310) do
     t.index ["password_reset_token"], name: "index_users_on_password_reset_token"
   end
 
+  add_foreign_key "addresses", "users"
   add_foreign_key "cart_items", "carts"
   add_foreign_key "cart_items", "products"
   add_foreign_key "carts", "users"

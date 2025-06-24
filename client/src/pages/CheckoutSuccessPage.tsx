@@ -1,14 +1,74 @@
-import { useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useParams } from 'react-router-dom'
+import { orderService } from '@/services/orderService'
+import { guestOrderService } from '@/services/guestOrderService'
 
 export default function CheckoutSuccessPage() {
   const location = useLocation()
-  const { orderTotal, orderNumber, isGuest } = location.state || {}
+  const { orderId } = useParams<{ orderId: string }>()
+  const { isGuest } = location.state || {}
+  
+  const [order, setOrder] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Clear any stored cart data since order is complete
-    // This is already handled by the checkout process, but good to be safe
-  }, [])
+    const fetchOrder = async () => {
+      if (!orderId) {
+        setError('No order ID provided')
+        setLoading(false)
+        return
+      }
+
+      try {
+        setLoading(true)
+        const orderData = await orderService.getOrder(orderId)
+        setOrder(orderData)
+        setError(null)
+      } catch (err) {
+        console.error('Failed to fetch order:', err)
+        setError('Failed to load order details')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchOrder()
+  }, [orderId])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-sand-50 py-12">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-lg shadow-card p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-forest-600 mx-auto mb-4"></div>
+            <p className="text-charcoal-600">Loading your order details...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-sand-50 py-12">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-lg shadow-card p-8 text-center">
+            <div className="text-red-600 mb-4">
+              <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-charcoal-900 mb-4">Unable to Load Order</h1>
+            <p className="text-charcoal-600 mb-8">{error}</p>
+            <Link to="/shop" className="bg-forest-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-forest-700 transition-colors">
+              Continue Shopping
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-sand-50 py-12">
@@ -31,20 +91,60 @@ export default function CheckoutSuccessPage() {
           </p>
 
           {/* Order Details */}
-          {orderNumber && (
+          {order && (
             <div className="bg-sand-50 rounded-lg p-6 mb-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
                 <div>
                   <p className="text-sm font-medium text-charcoal-700 mb-1">Order Number</p>
-                  <p className="text-lg font-semibold text-charcoal-900">{orderNumber}</p>
+                  <p className="text-lg font-semibold text-charcoal-900">{order.order_number}</p>
                 </div>
                 
-                {orderTotal && (
-                  <div>
-                    <p className="text-sm font-medium text-charcoal-700 mb-1">Total Amount</p>
-                    <p className="text-lg font-semibold text-charcoal-900">${orderTotal.toFixed(2)}</p>
+                <div>
+                  <p className="text-sm font-medium text-charcoal-700 mb-1">Total Amount</p>
+                  <p className="text-lg font-semibold text-charcoal-900">${order.total_amount}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Order Items */}
+          {order && order.order_items && order.order_items.length > 0 && (
+            <div className="bg-white border border-sand-200 rounded-lg p-6 mb-8">
+              <h3 className="text-lg font-semibold text-charcoal-900 mb-4">Order Items</h3>
+              
+              {order.store && (
+                <div className="flex items-center space-x-2 mb-3">
+                  <div className="w-8 h-8 bg-forest-100 rounded-full flex items-center justify-center">
+                    <svg className="w-4 h-4 text-forest-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H3m2 0h4M9 7h6m-6 4h6m-6 4h6" />
+                    </svg>
                   </div>
-                )}
+                  <span className="font-medium text-charcoal-900">From {order.store.name}</span>
+                </div>
+              )}
+              
+              <div className="space-y-3">
+                {order.order_items.map((item) => (
+                  <div key={item.id} className="flex items-start space-x-4 p-3 bg-sand-50 rounded-lg">
+                    <div className="flex-shrink-0">
+                      <img
+                        src={item.product_image || item.product?.images?.[0] || '/placeholder-product.svg'}
+                        alt={item.product_name || item.product?.name}
+                        className="w-16 h-16 rounded-lg object-cover border border-sand-200"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-charcoal-900">{item.product_name || item.product?.name}</h4>
+                      {item.product?.sku && (
+                        <p className="text-sm text-charcoal-500">SKU: {item.product.sku}</p>
+                      )}
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-sm text-charcoal-600">Qty: {item.quantity}</span>
+                        <span className="font-semibold text-charcoal-900">${item.total_price}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -99,7 +199,7 @@ export default function CheckoutSuccessPage() {
                     Since you checked out as a guest, you can track your order using:
                   </p>
                   <ul className="text-sm text-blue-800 space-y-1">
-                    <li>• <strong>Order Number:</strong> {orderNumber}</li>
+                    <li>• <strong>Order Number:</strong> {order?.order_number}</li>
                     <li>• <strong>Email Address:</strong> The email you provided during checkout</li>
                   </ul>
                   <p className="text-sm text-blue-800 mt-3">

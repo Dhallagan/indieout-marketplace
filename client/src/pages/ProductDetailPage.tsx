@@ -70,19 +70,13 @@ export default function ProductDetailPage() {
     
     setIsAddingToCart(true)
     try {
-      addToCart(product, quantity)
+      await addToCart(product.id, quantity)
       
       // Reset quantity to 1 after adding
       setQuantity(1)
-      
-      // Show success toast
-      addToast(
-        `Added ${quantity} ${quantity === 1 ? 'item' : 'items'} to cart!`,
-        'success'
-      )
     } catch (error) {
+      // Error handling is done in the context
       console.error('Failed to add to cart:', error)
-      addToast('Failed to add item to cart. Please try again.', 'error')
     } finally {
       setIsAddingToCart(false)
     }

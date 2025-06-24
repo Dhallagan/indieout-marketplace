@@ -1,7 +1,7 @@
 class OrderItemSerializer
   include JSONAPI::Serializer
   
-  attributes :quantity, :unit_price, :total_price, :product_snapshot
+  attributes :order_id, :product_id, :quantity, :unit_price, :total_price, :product_snapshot
 
   belongs_to :order
   belongs_to :product

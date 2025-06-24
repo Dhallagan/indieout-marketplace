@@ -257,6 +257,42 @@ export interface OrderItem {
 `;
 }
 
+function generateAddressTypes() {
+  return `
+export interface Address {
+  id: string;
+  user_id: string;
+  full_name: string;
+  address_line_1: string;
+  address_line_2?: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  country: string;
+  phone?: string;
+  is_default: boolean;
+  formatted_address: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateAddressRequest {
+  full_name: string;
+  address_line_1: string;
+  address_line_2?: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  country: string;
+  phone?: string;
+  is_default?: boolean;
+}
+
+export interface UpdateAddressRequest extends Partial<CreateAddressRequest> {
+}
+`;
+}
+
 // Main function to generate all types
 function generateTypes() {
   const typeDefinitions = [
@@ -266,6 +302,7 @@ function generateTypes() {
     generateProductTypes(),
     generateCartTypes(),
     generateOrderTypes(),
+    generateAddressTypes(),
   ].join('\n');
 
   const outputPath = path.join(__dirname, '../client/src/types/api-generated.ts');

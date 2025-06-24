@@ -1,97 +1,18 @@
-import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
-import { LocalCart, LocalCartItem, CartContextType } from '@/types/cart'
-import { Product } from '@/types/api-generated'
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { Cart } from '@/types/api-generated'
+import { cartService } from '@/services/cartService'
+import { useToast } from '@/contexts/ToastContext'
 
-const CART_STORAGE_KEY = 'indieout_cart'
-
-// Initial cart state
-const initialCart: LocalCart = {
-  items: [],
-  totalItems: 0,
-  totalPrice: 0,
-  updatedAt: new Date()
-}
-
-// Cart actions
-type CartAction =
-  | { type: 'ADD_TO_CART'; payload: { product: Product; quantity: number } }
-  | { type: 'REMOVE_FROM_CART'; payload: { itemId: string } }
-  | { type: 'UPDATE_QUANTITY'; payload: { itemId: string; quantity: number } }
-  | { type: 'CLEAR_CART' }
-  | { type: 'LOAD_CART'; payload: LocalCart }
-
-// Cart reducer
-function cartReducer(state: LocalCart, action: CartAction): LocalCart {
-  switch (action.type) {
-    case 'ADD_TO_CART': {
-      const { product, quantity } = action.payload
-      const existingItem = state.items.find(item => item.product.id === product.id)
-      
-      let newItems: LocalCartItem[]
-      
-      if (existingItem) {
-        // Update existing item quantity
-        newItems = state.items.map(item =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        )
-      } else {
-        // Add new item
-        const newItem: LocalCartItem = {
-          id: `${product.id}-${Date.now()}`,
-          product,
-          quantity,
-          addedAt: new Date()
-        }
-        newItems = [...state.items, newItem]
-      }
-      
-      return calculateCartTotals({ ...state, items: newItems, updatedAt: new Date() })
-    }
-    
-    case 'REMOVE_FROM_CART': {
-      const newItems = state.items.filter(item => item.id !== action.payload.itemId)
-      return calculateCartTotals({ ...state, items: newItems, updatedAt: new Date() })
-    }
-    
-    case 'UPDATE_QUANTITY': {
-      const { itemId, quantity } = action.payload
-      
-      if (quantity <= 0) {
-        // Remove item if quantity is 0 or negative
-        const newItems = state.items.filter(item => item.id !== itemId)
-        return calculateCartTotals({ ...state, items: newItems, updatedAt: new Date() })
-      }
-      
-      const newItems = state.items.map(item =>
-        item.id === itemId ? { ...item, quantity } : item
-      )
-      
-      return calculateCartTotals({ ...state, items: newItems, updatedAt: new Date() })
-    }
-    
-    case 'CLEAR_CART':
-      return { ...initialCart, updatedAt: new Date() }
-    
-    case 'LOAD_CART':
-      return action.payload
-    
-    default:
-      return state
-  }
-}
-
-// Helper function to calculate cart totals
-function calculateCartTotals(cart: LocalCart): LocalCart {
-  const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0)
-  const totalPrice = cart.items.reduce((sum, item) => sum + (Number(item.product.base_price) * item.quantity), 0)
-  
-  return {
-    ...cart,
-    totalItems,
-    totalPrice
-  }
+interface CartContextType {
+  cart: Cart | null
+  loading: boolean
+  addToCart: (productId: string, quantity?: number) => Promise<void>
+  updateQuantity: (cartItemId: string, quantity: number) => Promise<void>
+  removeFromCart: (cartItemId: string) => Promise<void>
+  clearCart: () => Promise<void>
+  isInCart: (productId: string) => boolean
+  getCartItem: (productId: string) => any | undefined
+  refreshCart: () => Promise<void>
 }
 
 // Create context
@@ -103,68 +24,94 @@ interface CartProviderProps {
 }
 
 export function CartProvider({ children }: CartProviderProps) {
-  const [cart, dispatch] = useReducer(cartReducer, initialCart)
+  const [cart, setCart] = useState<Cart | null>(null)
+  const [loading, setLoading] = useState(true)
+  const { addToast } = useToast()
   
-  // Load cart from localStorage on mount
+  // Load cart on mount
   useEffect(() => {
-    try {
-      const savedCart = localStorage.getItem(CART_STORAGE_KEY)
-      if (savedCart) {
-        const parsedCart = JSON.parse(savedCart)
-        // Convert date strings back to Date objects
-        parsedCart.updatedAt = new Date(parsedCart.updatedAt)
-        parsedCart.items = parsedCart.items.map((item: any) => ({
-          ...item,
-          addedAt: new Date(item.addedAt)
-        }))
-        dispatch({ type: 'LOAD_CART', payload: parsedCart })
-      }
-    } catch (error) {
-      console.error('Failed to load cart from localStorage:', error)
-    }
+    refreshCart()
   }, [])
   
-  // Save cart to localStorage whenever it changes
-  useEffect(() => {
+  const refreshCart = async () => {
     try {
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart))
+      setLoading(true)
+      const { cart: fetchedCart } = await cartService.getCart()
+      setCart(fetchedCart)
     } catch (error) {
-      console.error('Failed to save cart to localStorage:', error)
+      console.error('Failed to load cart:', error)
+      // Don't show error toast on initial load, cart might not exist yet
+    } finally {
+      setLoading(false)
     }
-  }, [cart])
-  
-  const addToCart = (product: Product, quantity: number = 1) => {
-    dispatch({ type: 'ADD_TO_CART', payload: { product, quantity } })
   }
   
-  const removeFromCart = (itemId: string) => {
-    dispatch({ type: 'REMOVE_FROM_CART', payload: { itemId } })
+  const addToCart = async (productId: string, quantity: number = 1) => {
+    try {
+      const { cart: updatedCart } = await cartService.addToCart(productId, quantity)
+      setCart(updatedCart)
+      addToast('Added to cart', 'success')
+    } catch (error) {
+      console.error('Failed to add to cart:', error)
+      addToast(error instanceof Error ? error.message : 'Failed to add to cart', 'error')
+      throw error
+    }
   }
   
-  const updateQuantity = (itemId: string, quantity: number) => {
-    dispatch({ type: 'UPDATE_QUANTITY', payload: { itemId, quantity } })
+  const updateQuantity = async (cartItemId: string, quantity: number) => {
+    try {
+      const updatedCart = await cartService.updateCartItem(cartItemId, quantity)
+      setCart(updatedCart)
+    } catch (error) {
+      console.error('Failed to update cart item:', error)
+      addToast(error instanceof Error ? error.message : 'Failed to update cart', 'error')
+      throw error
+    }
   }
   
-  const clearCart = () => {
-    dispatch({ type: 'CLEAR_CART' })
+  const removeFromCart = async (cartItemId: string) => {
+    try {
+      const updatedCart = await cartService.removeFromCart(cartItemId)
+      setCart(updatedCart)
+      addToast('Removed from cart', 'success')
+    } catch (error) {
+      console.error('Failed to remove from cart:', error)
+      addToast(error instanceof Error ? error.message : 'Failed to remove from cart', 'error')
+      throw error
+    }
+  }
+  
+  const clearCart = async () => {
+    try {
+      const updatedCart = await cartService.clearCart()
+      setCart(updatedCart)
+      // Clear cart token when clearing cart
+      cartService.clearCartToken()
+    } catch (error) {
+      console.error('Failed to clear cart:', error)
+      addToast(error instanceof Error ? error.message : 'Failed to clear cart', 'error')
+      throw error
+    }
   }
   
   const isInCart = (productId: string): boolean => {
-    return cart.items.some(item => item.product.id === productId)
+    return cart?.cart_items?.some(item => item.product?.id === productId) || false
   }
   
-  const getCartItem = (productId: string): LocalCartItem | undefined => {
-    return cart.items.find(item => item.product.id === productId)
+  const getCartItem = (productId: string) => {
+    return cart?.cart_items?.find(item => item.product?.id === productId)
   }
   
   const contextValue: CartContextType = {
     cart,
+    loading,
     addToCart,
     removeFromCart,
     updateQuantity,
     clearCart,
     isInCart,
-    getCartItem
+    getCartItem,
+    refreshCart
   }
   
   return (

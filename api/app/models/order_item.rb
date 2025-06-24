@@ -8,6 +8,7 @@ class OrderItem < ApplicationRecord
 
   before_validation :calculate_total_price
   before_validation :capture_product_snapshot
+  before_create :set_cuid_id
 
   def product_name
     product_snapshot['name'] || product.name
@@ -42,5 +43,9 @@ class OrderItem < ApplicationRecord
       category: product.category&.name,
       store: product.store&.name
     }
+  end
+
+  def set_cuid_id
+    self.id = SecureRandom.urlsafe_base64(12) if id.blank?
   end
 end

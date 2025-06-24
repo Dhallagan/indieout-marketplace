@@ -5,7 +5,9 @@
       "Bash(rails generate:*)",
       "Bash(grep:*)",
       "Bash(curl:*)",
-      "Bash(rails:*)"
+      "Bash(rails:*)",
+      "Bash(rg:*)",
+      "Bash(npm run generate:types:*)"
     ],
     "deny": []
   }

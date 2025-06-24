@@ -1,5 +1,4 @@
-import { Order, ShippingAddress } from '@/types/api-generated'
-import { LocalCartItem } from '@/types/cart'
+import { Order, ShippingAddress, CartItem } from '@/types/api-generated'
 
 const API_BASE = '/api/v1'
 
@@ -36,6 +35,55 @@ export const guestOrderService = {
     }
 
     const data = await response.json()
+    console.log('Guest order API response:', data)
+    
+    // Transform JSONAPI response similar to authenticated orders
+    if (data.data) {
+      const included = data.included || []
+      
+      // Create lookup maps for included resources
+      const orderItemsMap = new Map()
+      const storesMap = new Map()
+      const productsMap = new Map()
+      
+      included.forEach((item: any) => {
+        if (item.type === 'order_item') {
+          orderItemsMap.set(item.id, { id: item.id, ...item.attributes })
+        } else if (item.type === 'store') {
+          storesMap.set(item.id, { id: item.id, ...item.attributes })
+        } else if (item.type === 'product') {
+          productsMap.set(item.id, { id: item.id, ...item.attributes })
+        }
+      })
+      
+      const transformOrder = (orderData: any) => {
+        const order = { id: orderData.id, ...orderData.attributes }
+        
+        // Attach store if relationship exists
+        if (orderData.relationships?.store?.data) {
+          order.store = storesMap.get(orderData.relationships.store.data.id)
+        }
+        
+        // Attach order items if relationship exists
+        if (orderData.relationships?.order_items?.data) {
+          order.order_items = orderData.relationships.order_items.data.map((ref: any) => {
+            const orderItem = orderItemsMap.get(ref.id)
+            // Also attach product to order item if it exists
+            if (orderItem && orderItem.product_id) {
+              orderItem.product = productsMap.get(orderItem.product_id)
+            }
+            return orderItem
+          }).filter(Boolean)
+        }
+        
+        return order
+      }
+      
+      return Array.isArray(data.data) 
+        ? data.data.map(transformOrder)
+        : [transformOrder(data.data)]
+    }
+    
     return Array.isArray(data.data) ? data.data : [data.data]
   },
 
@@ -57,10 +105,10 @@ export const guestOrderService = {
     return data.data
   },
 
-  // Convert local cart items to API format
-  convertCartItems(cartItems: LocalCartItem[]): { product_id: string; quantity: number }[] {
+  // Convert Rails API cart items to order format
+  convertCartItems(cartItems: CartItem[]): { product_id: string; quantity: number }[] {
     return cartItems.map(item => ({
-      product_id: item.product.id,
+      product_id: item.product_id,
       quantity: item.quantity
     }))
   },

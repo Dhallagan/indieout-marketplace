@@ -148,9 +148,9 @@ export default function Layout({ children }: LayoutProps) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M7 13l-1.5 6m6.5-6h3" />
                   </svg>
                   {/* Cart badge */}
-                  {cart.totalItems > 0 && (
+                  {cart && cart.total_items > 0 && (
                     <span className="absolute -top-1 -right-1 bg-clay-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-bold shadow-sm">
-                      {cart.totalItems > 99 ? '99+' : cart.totalItems}
+                      {cart.total_items > 99 ? '99+' : cart.total_items}
                     </span>
                   )}
                 </Link>

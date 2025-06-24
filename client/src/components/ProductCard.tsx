@@ -31,10 +31,9 @@ export default function ProductCard({ product, showStore = true, size = 'medium'
     
     setIsAdding(true)
     try {
-      addToCart(product, 1)
-      addToast(`Added ${product.name} to cart!`, 'success')
+      await addToCart(product.id, 1)
     } catch (error) {
-      addToast('Failed to add item to cart', 'error')
+      // Error handling is done in the context
     } finally {
       setIsAdding(false)
     }

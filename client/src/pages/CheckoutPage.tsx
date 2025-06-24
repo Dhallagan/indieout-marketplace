@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { useCart } from '@/contexts/CartContext'
 import { useAuth } from '@/hooks/useAuth'
 import { guestOrderService } from '@/services/guestOrderService'
+import { addressService } from '@/services/addressService'
+import { orderService } from '@/services/orderService'
 import { useToast } from '@/contexts/ToastContext'
+import { Address } from '@/types/api-generated'
 
 interface ShippingAddress {
   firstName: string
@@ -31,9 +34,12 @@ export default function CheckoutPage() {
   const { addToast } = useToast()
   const navigate = useNavigate()
   
-  const [currentStep, setCurrentStep] = useState(1)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isGuestCheckout, setIsGuestCheckout] = useState(false)
+  const [defaultAddress, setDefaultAddress] = useState<Address | null>(null)
+  const [showAddressSelector, setShowAddressSelector] = useState(false)
+  const [savedAddresses, setSavedAddresses] = useState<Address[]>([])
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
   
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     firstName: user?.firstName || '',
@@ -57,19 +63,72 @@ export default function CheckoutPage() {
 
   // Redirect if cart is empty
   useEffect(() => {
-    if (cart.items.length === 0) {
+    if (!cart || !cart.cart_items || cart.cart_items.length === 0) {
       navigate('/cart')
     }
-  }, [cart.items.length, navigate])
+  }, [cart, navigate])
 
-  // Initialize guest checkout if not authenticated
+  // Initialize guest checkout if not authenticated, or load addresses if authenticated
   useEffect(() => {
     if (!isAuthenticated) {
       setIsGuestCheckout(true)
+    } else {
+      loadUserAddresses()
     }
   }, [isAuthenticated])
 
-  const subtotal = cart.totalPrice
+  const loadUserAddresses = async () => {
+    try {
+      const addresses = await addressService.getAddresses()
+      setSavedAddresses(addresses)
+      
+      // Find default address
+      const defaultAddr = addresses.find(addr => addr.is_default)
+      if (defaultAddr) {
+        setDefaultAddress(defaultAddr)
+        setSelectedAddressId(defaultAddr.id)
+        
+        // Pre-fill shipping form with default address
+        setShippingAddress({
+          firstName: defaultAddr.full_name.split(' ')[0] || '',
+          lastName: defaultAddr.full_name.split(' ').slice(1).join(' ') || '',
+          email: user?.email || '',
+          phone: defaultAddr.phone || '',
+          address1: defaultAddr.address_line_1,
+          address2: defaultAddr.address_line_2 || '',
+          city: defaultAddr.city,
+          state: defaultAddr.state,
+          zipCode: defaultAddr.zip_code,
+          country: defaultAddr.country
+        })
+      }
+    } catch (error) {
+      console.error('Failed to load addresses:', error)
+    }
+  }
+
+  const handleAddressSelection = (address: Address) => {
+    setSelectedAddressId(address.id)
+    setDefaultAddress(address)
+    
+    // Update shipping form
+    setShippingAddress({
+      firstName: address.full_name.split(' ')[0] || '',
+      lastName: address.full_name.split(' ').slice(1).join(' ') || '',
+      email: user?.email || '',
+      phone: address.phone || '',
+      address1: address.address_line_1,
+      address2: address.address_line_2 || '',
+      city: address.city,
+      state: address.state,
+      zipCode: address.zip_code,
+      country: address.country
+    })
+    
+    setShowAddressSelector(false)
+  }
+
+  const subtotal = parseFloat(cart?.total_price?.toString() || '0')
   const shipping = subtotal >= 100 ? 0 : 9.99
   const tax = subtotal * 0.08
   const total = subtotal + shipping + tax
@@ -91,33 +150,30 @@ export default function CheckoutPage() {
           shipping_address: shippingAddress,
           billing_address: shippingAddress, // Use shipping as billing for now
           payment_method: 'card', // TODO: Get from payment form
-          cart_items: guestOrderService.convertCartItems(cart.items)
+          cart_items: guestOrderService.convertCartItems(cart.cart_items)
         }
 
         const orders = await guestOrderService.createGuestOrder(guestOrderData)
         
         // Clear cart and redirect to success
         clearCart()
-        navigate('/checkout/success', { 
+        navigate(`/checkout/success/${orders[0]?.id}`, { 
           state: { 
-            orderTotal: total,
-            orderNumber: orders[0]?.order_number || `ORD-${Date.now()}`,
             isGuest: true
           } 
         })
       } else {
-        // Authenticated user flow (existing logic)
-        // Simulate payment processing
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        
-        // TODO: Integrate with actual payment processor and authenticated order creation
+        // Authenticated user flow - backend will use their default address
+        const orderData = {
+          payment_method: 'card'
+        }
+
+        const orders = await orderService.createOrder(orderData)
         
         // Clear cart and redirect to success
         clearCart()
-        navigate('/checkout/success', { 
+        navigate(`/checkout/success/${orders[0]?.id}`, { 
           state: { 
-            orderTotal: total,
-            orderNumber: `ORD-${Date.now()}`,
             isGuest: false
           } 
         })
@@ -137,7 +193,7 @@ export default function CheckoutPage() {
     return imageUrl
   }
 
-  if (cart.items.length === 0) {
+  if (cart.cart_items.length === 0) {
     return null // Will redirect via useEffect
   }
 
@@ -162,40 +218,15 @@ export default function CheckoutPage() {
             )}
           </div>
           
-          {/* Progress Steps */}
+          {/* Simple checkout indicator */}
           <div className="mt-6">
             <div className="flex items-center">
-              {[1, 2, 3].map((step, index) => (
-                <div key={step} className="flex items-center">
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-                    currentStep >= step 
-                      ? 'bg-forest-600 border-forest-600 text-white' 
-                      : 'border-charcoal-300 text-charcoal-400'
-                  }`}>
-                    {currentStep > step ? (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : (
-                      <span className="text-sm font-medium">{step}</span>
-                    )}
-                  </div>
-                  
-                  <span className={`ml-2 text-sm font-medium ${
-                    currentStep >= step ? 'text-charcoal-900' : 'text-charcoal-500'
-                  }`}>
-                    {step === 1 && 'Shipping'}
-                    {step === 2 && 'Payment'}
-                    {step === 3 && 'Review'}
-                  </span>
-                  
-                  {index < 2 && (
-                    <div className={`mx-4 h-0.5 w-12 ${
-                      currentStep > step ? 'bg-forest-600' : 'bg-charcoal-300'
-                    }`} />
-                  )}
-                </div>
-              ))}
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-forest-600 border-2 border-forest-600 text-white">
+                <span className="text-sm font-medium">1</span>
+              </div>
+              <span className="ml-2 text-sm font-medium text-charcoal-900">
+                Complete Your Order
+              </span>
             </div>
           </div>
         </div>
@@ -203,9 +234,113 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2">
-            {/* Step 1: Contact & Shipping Information */}
-            {currentStep === 1 && (
-              <div className="space-y-6">
+            {/* Contact, Shipping & Payment Information */}
+            <div className="space-y-6">
+                {/* Authenticated User Address Display (Amazon Style) */}
+                {isAuthenticated && defaultAddress && (
+                  <div className="bg-white rounded-lg shadow-card p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center space-x-2 mb-2">
+                          <h2 className="text-lg font-semibold text-charcoal-900">
+                            Delivering to {defaultAddress.full_name}
+                          </h2>
+                          {defaultAddress.is_default && (
+                            <span className="bg-forest-100 text-forest-800 text-xs font-medium px-2 py-1 rounded">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-charcoal-600 text-sm leading-relaxed">
+                          {defaultAddress.formatted_address}
+                        </p>
+                        {defaultAddress.phone && (
+                          <p className="text-charcoal-600 text-sm mt-1">{defaultAddress.phone}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => setShowAddressSelector(true)}
+                        className="text-forest-600 hover:text-forest-700 text-sm font-medium border border-forest-300 hover:border-forest-400 px-4 py-2 rounded-lg transition-colors"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Address Selector Modal */}
+                {showAddressSelector && (
+                  <div className="bg-white rounded-lg shadow-card p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-lg font-semibold text-charcoal-900">Choose a delivery address</h2>
+                      <button
+                        onClick={() => setShowAddressSelector(false)}
+                        className="text-charcoal-400 hover:text-charcoal-600"
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                      {savedAddresses.map((address) => (
+                        <div
+                          key={address.id}
+                          onClick={() => handleAddressSelection(address)}
+                          className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                            selectedAddressId === address.id 
+                              ? 'border-forest-500 bg-forest-50' 
+                              : 'border-charcoal-200 hover:border-forest-300'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-1">
+                                <p className="font-medium text-charcoal-800">{address.full_name}</p>
+                                {address.is_default && (
+                                  <span className="bg-forest-100 text-forest-800 text-xs font-medium px-2 py-1 rounded">
+                                    Default
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-charcoal-600 text-sm leading-relaxed">
+                                {address.formatted_address}
+                              </p>
+                              {address.phone && (
+                                <p className="text-charcoal-600 text-sm mt-1">{address.phone}</p>
+                              )}
+                            </div>
+                            {selectedAddressId === address.id && (
+                              <div className="ml-3">
+                                <div className="w-5 h-5 bg-forest-600 rounded-full flex items-center justify-center">
+                                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      
+                      <div 
+                        onClick={() => {
+                          setShowAddressSelector(false)
+                          // TODO: Add navigation to add new address
+                        }}
+                        className="p-4 border-2 border-dashed border-charcoal-300 rounded-lg cursor-pointer hover:border-forest-400 transition-colors text-center"
+                      >
+                        <div className="flex items-center justify-center space-x-2 text-charcoal-600">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                          <span className="font-medium">Add a new address</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {/* Express Checkout Options */}
                 {isGuestCheckout && (
                   <div className="bg-white rounded-lg shadow-card p-6">
@@ -224,11 +359,11 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                {/* Contact Information */}
-                <div className="bg-white rounded-lg shadow-card p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-charcoal-900">Contact Information</h2>
-                    {isGuestCheckout && (
+                {/* Contact Information - Only show for guest checkout */}
+                {isGuestCheckout && (
+                  <div className="bg-white rounded-lg shadow-card p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-lg font-semibold text-charcoal-900">Contact Information</h2>
                       <button
                         type="button"
                         onClick={() => navigate('/login', { state: { returnTo: '/checkout' } })}
@@ -236,214 +371,144 @@ export default function CheckoutPage() {
                       >
                         Sign in for faster checkout
                       </button>
-                    )}
+                    </div>
+                    
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-charcoal-700 mb-1">
+                        Email Address *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={shippingAddress.email}
+                        onChange={(e) => setShippingAddress({...shippingAddress, email: e.target.value})}
+                        placeholder="Enter your email for order updates"
+                        className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
+                      />
+                      <p className="text-xs text-charcoal-500 mt-1">We'll send order confirmations and updates to this email</p>
+                    </div>
                   </div>
-                  
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-charcoal-700 mb-1">
-                      Email Address *
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={shippingAddress.email}
-                      onChange={(e) => setShippingAddress({...shippingAddress, email: e.target.value})}
-                      placeholder="Enter your email for order updates"
-                      className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
-                    />
-                    <p className="text-xs text-charcoal-500 mt-1">We'll send order confirmations and updates to this email</p>
-                  </div>
-                </div>
+                )}
 
-                {/* Shipping Information */}
+                {/* Shipping Information - Only show for guest checkout */}
+                {isGuestCheckout && (
+                  <div className="bg-white rounded-lg shadow-card p-6">
+                    <h2 className="text-lg font-semibold text-charcoal-900 mb-6">Shipping Address</h2>
+                    
+                    <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-charcoal-700 mb-1">
+                          First Name *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={shippingAddress.firstName}
+                          onChange={(e) => setShippingAddress({...shippingAddress, firstName: e.target.value})}
+                          className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-charcoal-700 mb-1">
+                          Last Name *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={shippingAddress.lastName}
+                          onChange={(e) => setShippingAddress({...shippingAddress, lastName: e.target.value})}
+                          className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-charcoal-700 mb-1">
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        value={shippingAddress.phone}
+                        onChange={(e) => setShippingAddress({...shippingAddress, phone: e.target.value})}
+                        className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-charcoal-700 mb-1">
+                        Street Address *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={shippingAddress.address1}
+                        onChange={(e) => setShippingAddress({...shippingAddress, address1: e.target.value})}
+                        className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-charcoal-700 mb-1">
+                        Apartment, suite, etc. (optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={shippingAddress.address2}
+                        onChange={(e) => setShippingAddress({...shippingAddress, address2: e.target.value})}
+                        className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-charcoal-700 mb-1">
+                          City *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={shippingAddress.city}
+                          onChange={(e) => setShippingAddress({...shippingAddress, city: e.target.value})}
+                          className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-charcoal-700 mb-1">
+                          State *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={shippingAddress.state}
+                          onChange={(e) => setShippingAddress({...shippingAddress, state: e.target.value})}
+                          className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-charcoal-700 mb-1">
+                          ZIP Code *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={shippingAddress.zipCode}
+                          onChange={(e) => setShippingAddress({...shippingAddress, zipCode: e.target.value})}
+                          className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
+                        />
+                      </div>
+                    </div>
+                    
+                    </div>
+                  </div>
+                )}
+
+
+                {/* Payment Information */}
                 <div className="bg-white rounded-lg shadow-card p-6">
-                  <h2 className="text-lg font-semibold text-charcoal-900 mb-6">Shipping Address</h2>
-                  
-                  <form onSubmit={handleShippingSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-charcoal-700 mb-1">
-                        First Name *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={shippingAddress.firstName}
-                        onChange={(e) => setShippingAddress({...shippingAddress, firstName: e.target.value})}
-                        className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-charcoal-700 mb-1">
-                        Last Name *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={shippingAddress.lastName}
-                        onChange={(e) => setShippingAddress({...shippingAddress, lastName: e.target.value})}
-                        className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-charcoal-700 mb-1">
-                      Phone Number
-                    </label>
-                    <input
-                      type="tel"
-                      value={shippingAddress.phone}
-                      onChange={(e) => setShippingAddress({...shippingAddress, phone: e.target.value})}
-                      className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-charcoal-700 mb-1">
-                      Street Address *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={shippingAddress.address1}
-                      onChange={(e) => setShippingAddress({...shippingAddress, address1: e.target.value})}
-                      className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-charcoal-700 mb-1">
-                      Apartment, suite, etc. (optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={shippingAddress.address2}
-                      onChange={(e) => setShippingAddress({...shippingAddress, address2: e.target.value})}
-                      className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-charcoal-700 mb-1">
-                        City *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={shippingAddress.city}
-                        onChange={(e) => setShippingAddress({...shippingAddress, city: e.target.value})}
-                        className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-charcoal-700 mb-1">
-                        State *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={shippingAddress.state}
-                        onChange={(e) => setShippingAddress({...shippingAddress, state: e.target.value})}
-                        className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-charcoal-700 mb-1">
-                        ZIP Code *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={shippingAddress.zipCode}
-                        onChange={(e) => setShippingAddress({...shippingAddress, zipCode: e.target.value})}
-                        className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-end pt-6">
-                    <button
-                      type="submit"
-                      className="bg-forest-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-forest-700 transition-colors"
-                    >
-                      Continue to Payment
-                    </button>
-                  </div>
-                </form>
-                </div>
-
-                {/* Shipping Options */}
-                <div className="bg-white rounded-lg shadow-card p-6">
-                  <h2 className="text-lg font-semibold text-charcoal-900 mb-4">Shipping & Delivery Options</h2>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-4 border border-charcoal-200 rounded-lg hover:border-forest-400 cursor-pointer transition-colors">
-                      <div className="flex items-center">
-                        <input
-                          type="radio"
-                          name="shipping"
-                          value="standard"
-                          defaultChecked
-                          className="w-4 h-4 text-forest-600 focus:ring-forest-500"
-                        />
-                        <div className="ml-3">
-                          <p className="font-medium text-charcoal-900">Standard Shipping</p>
-                          <p className="text-sm text-charcoal-600">5-7 business days</p>
-                        </div>
-                      </div>
-                      <span className="font-semibold text-forest-600">FREE</span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between p-4 border border-charcoal-200 rounded-lg hover:border-forest-400 cursor-pointer transition-colors">
-                      <div className="flex items-center">
-                        <input
-                          type="radio"
-                          name="shipping"
-                          value="expedited"
-                          className="w-4 h-4 text-forest-600 focus:ring-forest-500"
-                        />
-                        <div className="ml-3">
-                          <p className="font-medium text-charcoal-900">Expedited Shipping</p>
-                          <p className="text-sm text-charcoal-600">2-3 business days</p>
-                        </div>
-                      </div>
-                      <span className="font-semibold text-charcoal-900">$9.99</span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between p-4 border border-charcoal-200 rounded-lg hover:border-forest-400 cursor-pointer transition-colors">
-                      <div className="flex items-center">
-                        <input
-                          type="radio"
-                          name="shipping"
-                          value="overnight"
-                          className="w-4 h-4 text-forest-600 focus:ring-forest-500"
-                        />
-                        <div className="ml-3">
-                          <p className="font-medium text-charcoal-900">Overnight Delivery</p>
-                          <p className="text-sm text-charcoal-600">Next business day</p>
-                        </div>
-                      </div>
-                      <span className="font-semibold text-charcoal-900">$24.99</span>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-800">
-                      💡 <strong>Free shipping</strong> on orders over $100 with standard delivery
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Payment Information */}
-            {currentStep === 2 && (
-              <div className="bg-white rounded-lg shadow-card p-6">
                 <h2 className="text-xl font-semibold text-charcoal-900 mb-6">Payment</h2>
                 
                 <form onSubmit={handlePaymentSubmit} className="space-y-6">
@@ -456,52 +521,17 @@ export default function CheckoutPage() {
                     </div>
                   </div>
 
-                  {/* Payment Method Selection */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-4 border-2 border-forest-500 bg-forest-50 rounded-lg">
-                      <div className="flex items-center">
-                        <input
-                          type="radio"
-                          name="paymentMethod"
-                          value="card"
-                          defaultChecked
-                          className="w-4 h-4 text-forest-600 focus:ring-forest-500"
-                        />
-                        <span className="ml-3 font-medium text-charcoal-900">💳 Credit Card</span>
-                      </div>
-                      <div className="flex space-x-2">
-                        <span className="text-xs bg-blue-100 px-2 py-1 rounded">VISA</span>
-                        <span className="text-xs bg-red-100 px-2 py-1 rounded">MC</span>
-                        <span className="text-xs bg-blue-100 px-2 py-1 rounded">AMEX</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between p-4 border border-charcoal-200 rounded-lg hover:border-forest-400 cursor-pointer transition-colors opacity-60">
-                      <div className="flex items-center">
-                        <input
-                          type="radio"
-                          name="paymentMethod"
-                          value="paypal"
-                          disabled
-                          className="w-4 h-4 text-forest-600 focus:ring-forest-500"
-                        />
-                        <span className="ml-3 font-medium text-charcoal-900">🅿️ PayPal</span>
-                      </div>
-                      <span className="text-xs text-charcoal-500">Coming Soon</span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between p-4 border border-charcoal-200 rounded-lg hover:border-forest-400 cursor-pointer transition-colors opacity-60">
-                      <div className="flex items-center">
-                        <input
-                          type="radio"
-                          name="paymentMethod"
-                          value="applepay"
-                          disabled
-                          className="w-4 h-4 text-forest-600 focus:ring-forest-500"
-                        />
-                        <span className="ml-3 font-medium text-charcoal-900">🍎 Apple Pay</span>
-                      </div>
-                      <span className="text-xs text-charcoal-500">Coming Soon</span>
+                  {/* Payment Method Header */}
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold text-charcoal-900 flex items-center">
+                      <span className="mr-2">💳</span>
+                      Credit Card
+                    </h3>
+                    <div className="flex space-x-2 mt-2">
+                      <span className="text-xs bg-blue-100 px-2 py-1 rounded">VISA</span>
+                      <span className="text-xs bg-red-100 px-2 py-1 rounded">MC</span>
+                      <span className="text-xs bg-blue-100 px-2 py-1 rounded">AMEX</span>
+                      <span className="text-xs bg-purple-100 px-2 py-1 rounded">DISC</span>
                     </div>
                   </div>
                   
@@ -606,15 +636,7 @@ export default function CheckoutPage() {
                     </p>
                   </div>
                   
-                  <div className="flex justify-between pt-6">
-                    <button
-                      type="button"
-                      onClick={() => setCurrentStep(1)}
-                      className="px-6 py-3 border border-charcoal-300 rounded-lg font-semibold text-charcoal-700 hover:bg-sand-50 transition-colors"
-                    >
-                      Back to Shipping
-                    </button>
-                    
+                  <div className="flex justify-end pt-6">
                     <button
                       type="submit"
                       disabled={isProcessing}
@@ -636,8 +658,8 @@ export default function CheckoutPage() {
                     </button>
                   </div>
                 </form>
+                </div>
               </div>
-            )}
           </div>
 
           {/* Order Summary */}
@@ -647,7 +669,7 @@ export default function CheckoutPage() {
               
               {/* Cart Items */}
               <div className="space-y-4 mb-6">
-                {cart.items.map((item) => (
+                {cart.cart_items.map((item) => (
                   <div key={item.id} className="flex items-start space-x-3">
                     <img
                       src={getImageSrc(item.product.images?.[0])}

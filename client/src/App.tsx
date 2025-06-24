@@ -133,7 +133,7 @@ function App() {
             <Route path="/shop/stores/:slug" element={<StoreDetailPage />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
+            <Route path="/checkout/success/:orderId" element={<CheckoutSuccessPage />} />
             <Route path="/track-order" element={<GuestOrderTrackingPage />} />
           </Routes>
         </Layout>

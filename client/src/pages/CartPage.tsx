@@ -4,27 +4,37 @@ import { useCart } from '@/contexts/CartContext'
 import { useAuth } from '@/hooks/useAuth'
 
 export default function CartPage() {
-  const { cart, updateQuantity, removeFromCart, clearCart } = useCart()
+  const { cart, loading, updateQuantity, removeFromCart, clearCart } = useCart()
   const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const [isClearing, setIsClearing] = useState(false)
   const [showCheckoutModal, setShowCheckoutModal] = useState(false)
 
-  const handleQuantityChange = (itemId: string, newQuantity: number) => {
-    updateQuantity(itemId, newQuantity)
+  const handleQuantityChange = async (itemId: string, newQuantity: number) => {
+    try {
+      await updateQuantity(itemId, newQuantity)
+    } catch (error) {
+      // Error is already handled in context
+    }
   }
 
-  const handleRemoveItem = (itemId: string) => {
-    removeFromCart(itemId)
+  const handleRemoveItem = async (itemId: string) => {
+    try {
+      await removeFromCart(itemId)
+    } catch (error) {
+      // Error is already handled in context
+    }
   }
 
   const handleClearCart = async () => {
     setIsClearing(true)
-    // Add a small delay for better UX
-    setTimeout(() => {
-      clearCart()
+    try {
+      await clearCart()
+    } catch (error) {
+      // Error is already handled in context
+    } finally {
       setIsClearing(false)
-    }, 500)
+    }
   }
 
   const handleCheckout = () => {
@@ -52,12 +62,25 @@ export default function CartPage() {
     return imageUrl
   }
 
-  const subtotal = cart.totalPrice
+  const subtotal = parseFloat(cart?.total_price?.toString() || '0')
   const shipping = subtotal >= 100 ? 0 : 9.99
   const tax = subtotal * 0.08 // 8% tax
   const total = subtotal + shipping + tax
 
-  if (cart.items.length === 0) {
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-sand-50 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-forest-600 mx-auto mb-4"></div>
+            <p className="text-charcoal-600">Loading cart...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!cart || cart.cart_items?.length === 0) {
     return (
       <div className="min-h-screen bg-sand-50 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -119,12 +142,12 @@ export default function CartPage() {
             <div className="bg-white rounded-lg shadow-card overflow-hidden">
               <div className="p-6 border-b border-sand-200">
                 <h2 className="text-lg font-semibold text-charcoal-900">
-                  Items ({cart.totalItems})
+                  Items ({cart?.total_items || 0})
                 </h2>
               </div>
               
               <div className="divide-y divide-sand-200">
-                {cart.items.map((item) => (
+                {cart?.cart_items?.map((item) => (
                   <div key={item.id} className="p-6">
                     <div className="flex items-start space-x-4">
                       <div className="flex-shrink-0">
