@@ -1,0 +1,34 @@
+{
+  "name": "outdoor-marketplace",
+  "version": "1.0.0",
+  "description": "Etsy-style marketplace for independent outdoor brands",
+  "private": true,
+  "workspaces": [
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:client\"",
+    "dev:client": "cd client && npm run dev",
+    "dev:api": "cd api && rails server -p 5000",
+    "build": "npm run build:client",
+    "build:client": "cd client && npm run build",
+    "start": "cd api && rails server -e production",
+    "install:all": "npm install && cd client && npm install && cd ../api && bundle install",
+    "lint": "npm run lint:client",
+    "lint:client": "cd client && npm run lint",
+    "test": "npm run test:client && npm run test:api",
+    "test:client": "cd client && npm run test",
+    "test:api": "cd api && bundle exec rspec",
+    "db:create": "cd api && rails db:create",
+    "db:migrate": "cd api && rails db:migrate",
+    "db:seed": "cd api && rails db:seed",
+    "db:reset": "cd api && rails db:reset",
+    "generate:types": "node scripts/generate-types.js"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": ["marketplace", "outdoor", "e-commerce"],
+  "author": "",
+  "license": "ISC"
+}

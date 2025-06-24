@@ -1,0 +1,72 @@
+source "https://rubygems.org"
+
+ruby "3.2.6"
+
+# Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
+gem "rails", "~> 7.1.5", ">= 7.1.5.1"
+
+# Use postgresql as the database for Active Record
+gem "pg", "~> 1.1"
+
+# Use the Puma web server [https://github.com/puma/puma]
+gem "puma", ">= 5.0"
+
+# Authentication and security
+gem "bcrypt", "~> 3.1.7"
+gem "jwt"
+
+# JSON API serialization
+gem "jsonapi-serializer"
+
+# Image uploading and processing
+gem "image_processing", "~> 1.2"
+gem "shrine", "~> 3.6"
+gem "aws-sdk-s3", "~> 1.0"
+gem "ruby-vips" # For faster image processing
+
+# API documentation and type generation
+gem "rswag-api"
+gem "rswag-ui"
+
+# Background jobs
+gem "sidekiq"
+
+# Environment variables
+gem "dotenv-rails"
+
+# Validation
+gem "dry-validation"
+
+# Pagination
+gem "kaminari"
+
+# Windows does not include zoneinfo files, so bundle the tzinfo-data gem
+gem "tzinfo-data", platforms: %i[ windows jruby ]
+
+# Reduces boot times through caching; required in config/boot.rb
+gem "bootsnap", require: false
+
+# Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
+gem "rack-cors"
+
+group :development, :test do
+  # Testing framework
+  gem "rspec-rails"
+  gem "factory_bot_rails"
+  
+  # API documentation generation
+  gem "rswag-specs"
+  
+  # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
+  gem "debug", platforms: %i[ mri windows ]
+end
+
+group :development do
+  # Database schema annotations
+  gem "annotate"
+  
+  # Better error pages
+  gem "better_errors"
+  gem "binding_of_caller"
+end
+

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(rails generate:*)",
+      "Bash(grep:*)",
+      "Bash(curl:*)",
+      "Bash(rails:*)"
+    ],
+    "deny": []
+  }
+}
