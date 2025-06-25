@@ -10,7 +10,8 @@ RUN apk add --no-cache \
     git \
     vips \
     vips-dev \
-    curl
+    curl \
+    bash
 
 # Set working directory
 WORKDIR /app
@@ -24,19 +25,16 @@ RUN bundle install --jobs 4 --retry 3
 # Copy application code
 COPY . .
 
-# Create necessary directories and set permissions
+# Create necessary directories
 RUN mkdir -p tmp/pids tmp/sockets log storage public/uploads && \
-    chmod -R 755 public
+    chmod -R 755 .
 
-# Precompile assets (even though API-only, some gems might need this)
-RUN RAILS_ENV=production bundle exec rails assets:precompile || true
+# Copy entrypoint script
+COPY docker-entrypoint.sh /app/
+RUN chmod +x /app/docker-entrypoint.sh
 
-# Expose port (Cloud Run uses PORT env var, defaults to 8080)
+# Expose port
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
-
-# Start Rails server binding to all interfaces
-CMD bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:${PORT:-8080}
+# Start Rails server
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
