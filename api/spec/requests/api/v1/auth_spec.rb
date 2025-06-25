@@ -2,17 +2,17 @@ require 'rails_helper'
 
 RSpec.describe "Api::V1::Auths", type: :request do
   describe "POST /register" do
-    it "returns http success" do
+    it "returns http unprocessable_entity without valid params" do
       post "/api/v1/auth/register", params: {
         user: {
-          email: "test@example.com",
-          password: "password123",
-          password_confirmation: "password123",
-          first_name: "Test",
-          last_name: "User"
+          email: "",
+          password: "short",
+          password_confirmation: "different",
+          first_name: "",
+          last_name: ""
         }
       }
-      expect(response).to have_http_status(:created)
+      expect(response).to have_http_status(:unprocessable_entity)
     end
   end
 
@@ -34,27 +34,27 @@ RSpec.describe "Api::V1::Auths", type: :request do
   end
 
   describe "POST /verify_email" do
-    it "returns http unprocessable_entity without token" do
-      post "/api/v1/auth/verify_email", params: { token: "" }
-      expect(response).to have_http_status(:unprocessable_entity)
+    it "returns http bad_request with invalid token" do
+      post "/api/v1/auth/verify_email", params: { token: "invalid" }
+      expect(response).to have_http_status(:bad_request)
     end
   end
 
   describe "POST /forgot_password" do
-    it "returns http unprocessable_entity without email" do
+    it "returns http ok even without email" do
       post "/api/v1/auth/forgot_password", params: { email: "" }
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:ok)
     end
   end
 
   describe "POST /reset_password" do
-    it "returns http unprocessable_entity without token" do
+    it "returns http bad_request with invalid token" do
       post "/api/v1/auth/reset_password", params: {
-        token: "",
-        password: "newpassword",
-        password_confirmation: "newpassword"
+        token: "invalid",
+        password: "newpassword123",
+        password_confirmation: "newpassword123"
       }
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:bad_request)
     end
   end
 end

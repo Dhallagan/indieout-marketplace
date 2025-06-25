@@ -17,6 +17,9 @@ RSpec.describe OrderMailer, type: :mailer do
       user: user,
       order_number: "ORD-12345",
       status: "pending",
+      created_at: Time.current,
+      updated_at: Time.current,
+      total_amount: 99.99,
       shipping_address: { 
         street: "123 Main St",
         city: "Test City",
