@@ -52,8 +52,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: ./client/package-lock.json
       
       - name: Install Rails dependencies
         working-directory: ./api
@@ -186,8 +184,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: ./client/package-lock.json
       
       - name: Install and build frontend
         working-directory: ./client
