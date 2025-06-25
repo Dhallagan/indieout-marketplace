@@ -1,12 +1,15 @@
 # Rails API Dockerfile
-FROM ruby:3.2.2-alpine AS base
+FROM ruby:3.2.6-alpine AS base
 
 # Install runtime dependencies
 RUN apk add --no-cache \
     postgresql-client \
     tzdata \
     gcompat \
-    libpq
+    libpq \
+    vips \
+    vips-dev \
+    curl
 
 # Set working directory
 WORKDIR /app
@@ -17,7 +20,8 @@ FROM base AS builder
 RUN apk add --no-cache \
     build-base \
     postgresql-dev \
-    git
+    git \
+    vips-dev
 
 # Copy Gemfiles
 COPY Gemfile Gemfile.lock ./
