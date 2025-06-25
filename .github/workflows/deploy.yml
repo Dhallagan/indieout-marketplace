@@ -96,11 +96,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       
+      - name: Set lowercase image name
+        id: lowercase
+        run: |
+          echo "IMAGE_NAME_LOWER=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+      
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.IMAGE_NAME_LOWER }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -113,7 +118,7 @@ jobs:
         with:
           context: ./api
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:latest
+          tags: ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.IMAGE_NAME_LOWER }}-api:latest
           labels: ${{ steps.meta.outputs.labels }}
       
       - name: Build and push Frontend Docker image
@@ -121,7 +126,7 @@ jobs:
         with:
           context: ./client
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
+          tags: ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.IMAGE_NAME_LOWER }}-frontend:latest
           labels: ${{ steps.meta.outputs.labels }}
 
   deploy:
