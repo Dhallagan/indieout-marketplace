@@ -249,32 +249,6 @@ jobs:
             --target-https-proxy=indieout-frontend-https-proxy \
             --ports=443 || true
 
-  deploy-infrastructure:
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ env.SERVICE_ACCOUNT }}
-      
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-      
-      - name: Apply Terraform
-        working-directory: ./terraform/gcp
-        run: |
-          terraform init
-          terraform plan -out=tfplan
-          terraform apply tfplan
-
   notify:
     needs: [deploy-api, deploy-frontend]
     runs-on: ubuntu-latest
