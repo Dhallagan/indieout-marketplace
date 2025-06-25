@@ -1,0 +1,68 @@
+<h2 style="color: #111827; margin-bottom: 8px;">Thank you for your order!</h2>
+<p style="color: #6b7280; margin-bottom: 24px;">
+  Hi <%= @user.first_name %>, we've received your order and are getting it ready. 
+  You'll receive another email when your items ship.
+</p>
+
+<div class="order-summary">
+  <h3 style="margin-top: 0; color: #111827;">Order Details</h3>
+  
+  <div style="margin-bottom: 16px;">
+    <strong>Order Number:</strong> <%= @order.order_number %><br>
+    <strong>Order Date:</strong> <%= @order.created_at.strftime("%B %d, %Y") %><br>
+    <strong>Payment Method:</strong> <%= @order.payment_method&.titleize || 'Card' %>
+  </div>
+
+  <h4 style="color: #111827; margin-bottom: 12px;">Items Ordered</h4>
+  <% @order_items.each do |item| %>
+    <div class="order-item">
+      <div>
+        <strong><%= item.product_name %></strong><br>
+        <span style="color: #6b7280;">Qty: <%= item.quantity %> × $<%= sprintf('%.2f', item.unit_price) %></span>
+        <% if item.product.store %>
+          <br><span style="color: #6b7280; font-size: 14px;">From <%= item.product.store.name %></span>
+        <% end %>
+      </div>
+      <div style="font-weight: 600;">
+        $<%= sprintf('%.2f', item.total_price) %>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="order-item total-row" style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #d1d5db;">
+    <div>Total</div>
+    <div>$<%= sprintf('%.2f', @order.total_amount) %></div>
+  </div>
+</div>
+
+<h4 style="color: #111827; margin-bottom: 12px;">Shipping Address</h4>
+<div style="background-color: #f9fafb; padding: 16px; border-radius: 6px; margin-bottom: 24px;">
+  <%= @shipping_address['firstName'] %> <%= @shipping_address['lastName'] %><br>
+  <%= @shipping_address['address1'] %><br>
+  <% if @shipping_address['address2'].present? %>
+    <%= @shipping_address['address2'] %><br>
+  <% end %>
+  <%= @shipping_address['city'] %>, <%= @shipping_address['state'] %> <%= @shipping_address['zipCode'] %><br>
+  <%= @shipping_address['country'] %>
+  <% if @shipping_address['phone'].present? %>
+    <br>Phone: <%= @shipping_address['phone'] %>
+  <% end %>
+</div>
+
+<div style="text-align: center; margin: 32px 0;">
+  <a href="<%= "#{root_url}dashboard" %>" class="button">View Order Status</a>
+</div>
+
+<h4 style="color: #111827;">What's Next?</h4>
+<ol style="color: #6b7280;">
+  <li><strong>Order Processing:</strong> We're preparing your items for shipment (1-2 business days)</li>
+  <li><strong>Shipping:</strong> Your order will be shipped via our trusted partners</li>
+  <li><strong>Delivery:</strong> You'll receive tracking information once your order ships</li>
+</ol>
+
+<p style="color: #6b7280; margin-top: 24px;">
+  <strong>Questions about your order?</strong><br>
+  Contact us at <a href="mailto:support@indieout.com" style="color: #065f46;">support@indieout.com</a> 
+  or call <a href="tel:+1-555-0123" style="color: #065f46;">1-555-0123</a>. 
+  Please include your order number: <strong><%= @order.order_number %></strong>
+</p>

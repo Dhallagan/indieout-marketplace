@@ -3,7 +3,7 @@ class OrderSerializer
   
   attributes :order_number, :status, :payment_status, :subtotal, :shipping_cost, 
              :tax_amount, :total_amount, :shipping_address, :billing_address,
-             :payment_method, :payment_reference, :notes, :fulfilled_at, 
+             :payment_method, :payment_reference, :tracking_number, :notes, :fulfilled_at, 
              :cancelled_at, :created_at, :updated_at
 
   belongs_to :user
@@ -28,5 +28,26 @@ class OrderSerializer
 
   attribute :can_fulfill do |order|
     order.can_fulfill?
+  end
+
+  attribute :customer_status do |order|
+    case order.status
+    when 'pending'
+      'Order Received'
+    when 'confirmed'
+      'Payment Confirmed'
+    when 'processing'
+      'Preparing Order'
+    when 'shipped'
+      'Shipped'
+    when 'delivered'
+      'Delivered'
+    when 'cancelled'
+      'Cancelled'
+    when 'refunded'
+      'Refunded'
+    else
+      order.status.humanize
+    end
   end
 end

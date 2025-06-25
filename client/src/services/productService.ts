@@ -47,11 +47,23 @@ class ProductService {
     return token ? { Authorization: `Bearer ${token}` } : {}
   }
 
-  async getProducts(filters?: { category_id?: string; category_slug?: string; store_id?: string }): Promise<Product[]> {
+  async getProducts(filters?: { 
+    category_id?: string; 
+    category_slug?: string; 
+    store_id?: string;
+    search?: string;
+    sort_by?: string;
+    page?: number;
+    per_page?: number;
+  }): Promise<{products: Product[], meta?: any}> {
     const params = new URLSearchParams()
     if (filters?.category_id) params.append('category_id', filters.category_id)
     if (filters?.category_slug) params.append('category_slug', filters.category_slug)
     if (filters?.store_id) params.append('store_id', filters.store_id)
+    if (filters?.search) params.append('search', filters.search)
+    if (filters?.sort_by) params.append('sort_by', filters.sort_by)
+    if (filters?.page) params.append('page', filters.page.toString())
+    if (filters?.per_page) params.append('per_page', filters.per_page.toString())
     
     const response = await fetch(`${API_BASE_URL}/products?${params}`, {
       headers: {
@@ -65,7 +77,7 @@ class ProductService {
       throw new Error(data.error || 'Failed to fetch products')
     }
 
-    return data.data.products
+    return { products: data.data.products, meta: data.meta }
   }
 
   async getProduct(id: string): Promise<Product> {

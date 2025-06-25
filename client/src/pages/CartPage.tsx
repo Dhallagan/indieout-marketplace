@@ -180,6 +180,34 @@ export default function CartPage() {
                               </p>
                             )}
                             
+                            {/* Stock Status Warning */}
+                            {item.product.track_inventory && (
+                              <>
+                                {item.product.out_of_stock ? (
+                                  <div className="flex items-center text-sm text-red-600 mt-2">
+                                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                    Out of stock - Remove from cart
+                                  </div>
+                                ) : item.product.low_stock ? (
+                                  <div className="flex items-center text-sm text-amber-600 mt-2">
+                                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                                    </svg>
+                                    Only {item.product.total_inventory} left in stock
+                                  </div>
+                                ) : item.quantity > item.product.total_inventory ? (
+                                  <div className="flex items-center text-sm text-red-600 mt-2">
+                                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                                    </svg>
+                                    Requested quantity ({item.quantity}) exceeds available stock ({item.product.total_inventory})
+                                  </div>
+                                ) : null}
+                              </>
+                            )}
+                            
                             <div className="flex items-center space-x-4 mt-3">
                               {/* Quantity Controls */}
                               <div className="flex items-center border border-charcoal-300 rounded-lg">
@@ -196,7 +224,7 @@ export default function CartPage() {
                                 <button
                                   onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
                                   className="p-2 hover:bg-sand-50 transition-colors rounded-r-lg"
-                                  disabled={item.quantity >= Number(item.product.inventory)}
+                                  disabled={item.quantity >= item.product.total_inventory || item.product.out_of_stock}
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

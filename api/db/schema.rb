@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_06_24_170944) do
+ActiveRecord::Schema[7.1].define(version: 2025_06_25_010307) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -137,6 +137,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_06_24_170944) do
     t.datetime "cancelled_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "tracking_number"
     t.index ["order_number"], name: "index_orders_on_order_number", unique: true
     t.index ["payment_status"], name: "index_orders_on_payment_status"
     t.index ["status"], name: "index_orders_on_status"
@@ -188,8 +189,6 @@ ActiveRecord::Schema[7.1].define(version: 2025_06_24_170944) do
     t.decimal "weight", precision: 8, scale: 2
     t.string "dimensions"
     t.json "materials"
-    t.json "images"
-    t.json "videos"
     t.string "meta_title"
     t.text "meta_description"
     t.integer "status", default: 0, null: false

@@ -10,12 +10,13 @@ class ProductImage < ApplicationRecord
   scope :primary, -> { where(position: 1) }
   
   before_validation :set_position, if: :new_record?
+  before_create :set_cuid_id
   
   # Get image URL for specific size
   def image_url(size: :medium)
     return nil unless image.present?
     
-    case size.to_sym
+    url = case size.to_sym
     when :thumb
       image(:thumb)&.url
     when :medium
@@ -27,6 +28,9 @@ class ProductImage < ApplicationRecord
     else
       image(:medium)&.url # Default to medium
     end
+    
+    # Ensure URL is absolute
+    ensure_absolute_url(url)
   end
   
   # Check if this is the primary image
@@ -61,5 +65,18 @@ class ProductImage < ApplicationRecord
   
   def set_position
     self.position = (product.product_images.maximum(:position) || 0) + 1
+  end
+  
+  def set_cuid_id
+    self.id = SecureRandom.urlsafe_base64(12) if id.blank?
+  end
+  
+  def ensure_absolute_url(url)
+    return nil if url.blank?
+    return url if url.start_with?('http://', 'https://')
+    
+    # For relative URLs, prepend the host
+    host = ENV.fetch('RAILS_HOST', 'http://localhost:5000')
+    "#{host}#{url}"
   end
 end

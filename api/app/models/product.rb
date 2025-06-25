@@ -65,6 +65,26 @@ class Product < ApplicationRecord
     end
   end
 
+  # Check if product is low on stock
+  def low_stock?
+    return false unless track_inventory
+    total_inventory <= low_stock_threshold
+  end
+
+  # Check if product is out of stock
+  def out_of_stock?
+    return false unless track_inventory
+    total_inventory <= 0
+  end
+
+  # Get stock status for display
+  def stock_status
+    return 'unlimited' unless track_inventory
+    return 'out_of_stock' if out_of_stock?
+    return 'low_stock' if low_stock?
+    'in_stock'
+  end
+
   private
 
   def generate_slug

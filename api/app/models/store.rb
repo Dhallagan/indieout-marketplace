@@ -2,6 +2,7 @@ class Store < ApplicationRecord
   # Associations
   belongs_to :owner, class_name: 'User'
   has_many :products, dependent: :destroy
+  has_many :orders, dependent: :restrict_with_error
 
   # Validations
   validates :name, presence: true, length: { minimum: 2, maximum: 100 }

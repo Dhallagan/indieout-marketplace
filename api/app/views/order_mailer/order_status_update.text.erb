@@ -1,0 +1,43 @@
+ORDER STATUS UPDATE
+
+Hi <%= @user.first_name %>,
+
+There's an update on your order.
+
+ORDER <%= @order.order_number %>
+=============================
+Status: <%= @order.status.titleize %>
+<%= @status_message %>
+
+Order Date: <%= @order.created_at.strftime("%B %d, %Y") %>
+Total: $<%= sprintf('%.2f', @order.total_amount) %>
+
+<% if @order.status == 'shipped' %>
+WHAT'S NEXT?
+============
+Your order is now on its way to you! You should receive it within 3-7 business days. 
+We'll send you tracking information once it's available.
+
+<% elsif @order.status == 'delivered' %>
+WE HOPE YOU LOVE YOUR ORDER!
+============================
+Your order has been delivered. If you have any issues with your items, please don't hesitate to contact us.
+We'd also love to hear about your experience with your new gear!
+
+<% elsif @order.status == 'cancelled' || @order.status == 'refunded' %>
+NEED HELP?
+==========
+If you have any questions about this status change or need assistance with a new order, 
+our support team is here to help.
+
+<% end %>
+View full order details: <%= "#{root_url}dashboard" %>
+
+QUESTIONS?
+==========
+Contact us at support@indieout.com or call 1-555-0123
+Please include your order number: <%= @order.order_number %>
+
+--
+IndieOut
+Connecting you with authentic outdoor gear makers

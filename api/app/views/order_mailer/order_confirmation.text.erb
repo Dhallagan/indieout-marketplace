@@ -1,0 +1,47 @@
+THANK YOU FOR YOUR ORDER!
+
+Hi <%= @user.first_name %>,
+
+We've received your order and are getting it ready. You'll receive another email when your items ship.
+
+ORDER DETAILS
+=============
+Order Number: <%= @order.order_number %>
+Order Date: <%= @order.created_at.strftime("%B %d, %Y") %>
+Payment Method: <%= @order.payment_method&.titleize || 'Card' %>
+
+ITEMS ORDERED
+=============
+<% @order_items.each do |item| %>
+<%= item.product_name %>
+Qty: <%= item.quantity %> × $<%= sprintf('%.2f', item.unit_price) %> = $<%= sprintf('%.2f', item.total_price) %>
+<% if item.product.store %>From <%= item.product.store.name %><% end %>
+
+<% end %>
+Total: $<%= sprintf('%.2f', @order.total_amount) %>
+
+SHIPPING ADDRESS
+================
+<%= @shipping_address['firstName'] %> <%= @shipping_address['lastName'] %>
+<%= @shipping_address['address1'] %>
+<% if @shipping_address['address2'].present? %><%= @shipping_address['address2'] %>
+<% end %><%= @shipping_address['city'] %>, <%= @shipping_address['state'] %> <%= @shipping_address['zipCode'] %>
+<%= @shipping_address['country'] %>
+<% if @shipping_address['phone'].present? %>Phone: <%= @shipping_address['phone'] %><% end %>
+
+WHAT'S NEXT?
+============
+1. Order Processing: We're preparing your items for shipment (1-2 business days)
+2. Shipping: Your order will be shipped via our trusted partners  
+3. Delivery: You'll receive tracking information once your order ships
+
+View your order status: <%= "#{root_url}dashboard" %>
+
+QUESTIONS?
+==========
+Contact us at support@indieout.com or call 1-555-0123
+Please include your order number: <%= @order.order_number %>
+
+--
+IndieOut
+Connecting you with authentic outdoor gear makers

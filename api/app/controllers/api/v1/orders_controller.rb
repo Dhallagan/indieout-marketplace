@@ -4,22 +4,46 @@ class Api::V1::OrdersController < ApplicationController
 
   # GET /api/v1/orders
   def index
-    orders = current_user.orders.recent.includes(:store, :order_items)
+    if params[:store_orders] == 'true' && current_user.store
+      # Seller viewing their store orders
+      orders = current_user.store.orders.recent.includes(:user, :order_items)
+    else
+      # Customer viewing their own orders
+      orders = current_user.orders.recent.includes(:store, :order_items)
+    end
     
     # Filter by status if provided
     orders = orders.by_status(params[:status]) if params[:status].present?
     
+    # Search functionality for sellers
+    if params[:search].present? && params[:store_orders] == 'true'
+      search_term = "%#{params[:search]}%"
+      orders = orders.joins(:user).where(
+        "order_number ILIKE ? OR users.email ILIKE ? OR users.first_name ILIKE ? OR users.last_name ILIKE ?",
+        search_term, search_term, search_term, search_term
+      )
+    end
+    
     # Pagination
     page = params[:page]&.to_i || 1
-    per_page = params[:per_page]&.to_i || 10
+    per_page = params[:per_page]&.to_i || 20
     per_page = [per_page, 100].min # Max 100 per page
     
     orders = orders.limit(per_page).offset((page - 1) * per_page)
     
-    render json: OrderSerializer.new(
-      orders, 
-      include: ['store', 'order_items', 'order_items.product']
-    )
+    if params[:store_orders] == 'true'
+      # Include user info for seller view
+      render json: OrderSerializer.new(
+        orders, 
+        include: ['user', 'order_items', 'order_items.product']
+      )
+    else
+      # Include store info for customer view
+      render json: OrderSerializer.new(
+        orders, 
+        include: ['store', 'order_items', 'order_items.product']
+      )
+    end
   end
 
   # GET /api/v1/orders/:id
@@ -78,15 +102,24 @@ class Api::V1::OrdersController < ApplicationController
         # Clear the cart after successful order creation
         cart.clear!
         
+        # For demo payments, automatically confirm payment
+        # In production, this would happen via Stripe webhook
+        orders.each(&:confirm_payment!)
+        
         render json: OrderSerializer.new(
-          orders, 
+          orders.map(&:reload), 
           include: ['store', 'order_items', 'order_items.product']
         ), status: :created
       else
         render json: { error: 'Failed to create orders' }, status: :unprocessable_entity
       end
-    rescue ActiveRecord::RecordInvalid => e
-      render json: { error: e.message }, status: :unprocessable_entity
+    rescue StandardError => e
+      # Handle inventory errors and other issues
+      if e.message.include?('Insufficient inventory')
+        render json: { error: e.message }, status: :unprocessable_entity
+      else
+        render json: { error: e.message }, status: :unprocessable_entity
+      end
     end
   end
 
@@ -96,6 +129,48 @@ class Api::V1::OrdersController < ApplicationController
       render json: OrderSerializer.new(@order)
     else
       render json: { error: 'Cannot cancel this order' }, status: :unprocessable_entity
+    end
+  end
+
+  # PATCH /api/v1/orders/:id/update_status (for store owners)
+  def update_status
+    @order = current_user.store&.orders&.find(params[:id])
+    
+    unless @order
+      return render json: { error: 'Order not found' }, status: :not_found
+    end
+
+    new_status = params[:status]
+    tracking_number = params[:tracking_number]
+
+    case new_status
+    when 'processing'
+      if @order.update(status: 'processing')
+        # Send status update email
+        OrderMailer.order_status_update(@order).deliver_later
+        render json: OrderSerializer.new(@order.reload)
+      else
+        render json: { error: 'Failed to update order status' }, status: :unprocessable_entity
+      end
+    when 'shipped'
+      updates = { status: 'shipped', fulfilled_at: Time.current }
+      updates[:tracking_number] = tracking_number if tracking_number.present?
+      
+      if @order.update(updates)
+        # Send shipping confirmation email
+        OrderMailer.shipping_confirmation(@order).deliver_later
+        render json: OrderSerializer.new(@order.reload)
+      else
+        render json: { error: 'Failed to update order status' }, status: :unprocessable_entity
+      end
+    when 'delivered'
+      if @order.update(status: 'delivered')
+        render json: OrderSerializer.new(@order.reload)
+      else
+        render json: { error: 'Failed to update order status' }, status: :unprocessable_entity
+      end
+    else
+      render json: { error: 'Invalid status' }, status: :unprocessable_entity
     end
   end
 

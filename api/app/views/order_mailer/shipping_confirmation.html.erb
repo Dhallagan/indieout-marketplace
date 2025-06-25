@@ -1,0 +1,69 @@
+<h2 style="color: #111827; margin-bottom: 8px;">Your order has shipped! 📦</h2>
+<p style="color: #6b7280; margin-bottom: 24px;">
+  Hi <%= @user.first_name %>, great news! Your order is on its way to you.
+</p>
+
+<div class="order-summary">
+  <h3 style="margin-top: 0; color: #111827;">Order <%= @order.order_number %></h3>
+  
+  <div style="background-color: #ecfdf5; border: 1px solid #10b981; border-radius: 6px; padding: 16px; margin-bottom: 20px;">
+    <div style="color: #047857; font-weight: 600; margin-bottom: 4px;">
+      📦 Shipped
+    </div>
+    <div style="color: #065f46;">
+      Your order has been shipped and is on its way to you!
+    </div>
+    <% if @tracking_number %>
+    <div style="color: #065f46; margin-top: 8px;">
+      <strong>Tracking Number:</strong> <%= @tracking_number %>
+    </div>
+    <% end %>
+  </div>
+
+  <h4 style="color: #111827; margin-bottom: 12px;">Items Shipped</h4>
+  <% @order_items.each do |item| %>
+    <div class="order-item">
+      <div>
+        <strong><%= item.product_name %></strong><br>
+        <span style="color: #6b7280;">Qty: <%= item.quantity %></span>
+        <% if item.product.store %>
+          <br><span style="color: #6b7280; font-size: 14px;">From <%= item.product.store.name %></span>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<h4 style="color: #111827; margin-bottom: 12px;">Shipping Address</h4>
+<div style="background-color: #f9fafb; padding: 16px; border-radius: 6px; margin-bottom: 24px;">
+  <%= @shipping_address['firstName'] %> <%= @shipping_address['lastName'] %><br>
+  <%= @shipping_address['address1'] %><br>
+  <% if @shipping_address['address2'].present? %>
+    <%= @shipping_address['address2'] %><br>
+  <% end %>
+  <%= @shipping_address['city'] %>, <%= @shipping_address['state'] %> <%= @shipping_address['zipCode'] %><br>
+  <%= @shipping_address['country'] %>
+</div>
+
+<div style="text-align: center; margin: 32px 0;">
+  <% if @tracking_number %>
+    <a href="#" class="button">Track Your Package</a>
+  <% else %>
+    <a href="<%= "#{root_url}dashboard" %>" class="button">View Order Details</a>
+  <% end %>
+</div>
+
+<h4 style="color: #111827;">What to Expect</h4>
+<ul style="color: #6b7280;">
+  <li><strong>Delivery Time:</strong> 3-7 business days for standard shipping</li>
+  <li><strong>Tracking Updates:</strong> Your package will be scanned at various points during transit</li>
+  <li><strong>Delivery:</strong> Most packages are delivered during normal business hours</li>
+  <li><strong>Questions:</strong> Contact us if you don't receive your package within the expected timeframe</li>
+</ul>
+
+<p style="color: #6b7280; margin-top: 24px;">
+  <strong>Questions about your shipment?</strong><br>
+  Contact us at <a href="mailto:support@indieout.com" style="color: #065f46;">support@indieout.com</a> 
+  or call <a href="tel:+1-555-0123" style="color: #065f46;">1-555-0123</a>. 
+  Please include your order number: <strong><%= @order.order_number %></strong>
+</p>

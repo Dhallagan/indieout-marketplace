@@ -122,6 +122,25 @@ export enum ProductStatus {
   REJECTED = 4,
 }
 
+export interface ProductImage {
+  id: string;
+  position: number;
+  alt_text?: string;
+  image_url: string;
+  thumb_url: string;
+  medium_url: string;
+  large_url: string;
+  metadata?: any;
+  dimensions?: {
+    width: number;
+    height: number;
+  };
+  primary: boolean;
+  created_at: string;
+  updated_at: string;
+  product_id: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -137,8 +156,8 @@ export interface Product {
   weight?: number;
   dimensions?: string;
   materials?: string[];
-  images?: string[];
-  videos?: string[];
+  images?: string[]; // Computed array for backward compatibility
+  primary_image?: string; // Quick access to primary image
   meta_title?: string;
   meta_description?: string;
   status: ProductStatus;
@@ -147,8 +166,16 @@ export interface Product {
   category_id: string;
   created_at: string;
   updated_at: string;
+  price_range: string;
+  total_inventory: number;
+  has_variants: boolean;
+  variant_count: number;
+  stock_status: 'unlimited' | 'in_stock' | 'low_stock' | 'out_of_stock';
+  low_stock: boolean;
+  out_of_stock: boolean;
   store?: Store;
   category?: Category;
+  product_images?: ProductImage[]; // Full relationship data when included
 }
 `;
 }

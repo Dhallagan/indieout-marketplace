@@ -43,8 +43,16 @@ class UploadService {
     return data.data
   }
 
-  async deleteImage(filename: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/uploads/${filename}`, {
+  async deleteImage(filename: string, imageUrl?: string): Promise<void> {
+    let url = `${API_BASE_URL}/uploads/${filename}`
+    
+    // If we have the full image URL, pass it as a query parameter
+    // This helps the backend clean up product references
+    if (imageUrl) {
+      url += `?image_url=${encodeURIComponent(imageUrl)}`
+    }
+    
+    const response = await fetch(url, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -118,7 +126,7 @@ class UploadService {
 const uploadService = new UploadService()
 
 export const uploadImage = (file: File) => uploadService.uploadImage(file)
-export const deleteImage = (filename: string) => uploadService.deleteImage(filename)
+export const deleteImage = (filename: string, imageUrl?: string) => uploadService.deleteImage(filename, imageUrl)
 export const getImageUrl = (url: string, size?: 'thumb' | 'medium' | 'large' | 'original') => uploadService.getImageUrl(url, size)
 export const getOptimizedUrl = (uploadResponse: UploadResponse, size?: 'thumb' | 'medium' | 'large' | 'original') => uploadService.getOptimizedUrl(uploadResponse, size)
 export const validateImage = (file: File) => uploadService.validateImage(file)

@@ -32,6 +32,8 @@ class Order < ApplicationRecord
 
   before_validation :generate_order_number, on: :create
   before_create :set_cuid_id
+  after_create :send_order_confirmation_email
+  after_update :send_status_update_email, if: :saved_change_to_status?
 
   scope :recent, -> { order(created_at: :desc) }
   scope :by_status, ->(status) { where(status: status) }
@@ -56,16 +58,18 @@ class Order < ApplicationRecord
   def fulfill!
     return false unless can_fulfill?
     
+    update!(status: 'shipped', fulfilled_at: Time.current)
+    true
+  rescue ActiveRecord::RecordInvalid
+    false
+  end
+
+  def confirm_payment!
+    return false unless pending?
+    
     transaction do
-      update!(status: 'processing', fulfilled_at: Time.current)
-      # Reduce inventory for each product
-      order_items.each do |item|
-        product = item.product
-        if product.track_inventory && product.inventory >= item.quantity
-          product.decrement(:inventory, item.quantity)
-          product.save!
-        end
-      end
+      update!(status: 'confirmed', payment_status: 'paid')
+      reduce_inventory!
     end
     true
   rescue ActiveRecord::RecordInvalid
@@ -75,7 +79,13 @@ class Order < ApplicationRecord
   def cancel!
     return false unless can_cancel?
     
-    update(status: 'cancelled', cancelled_at: Time.current)
+    transaction do
+      restore_inventory! if confirmed? || processing?
+      update!(status: 'cancelled', cancelled_at: Time.current)
+    end
+    true
+  rescue ActiveRecord::RecordInvalid
+    false
   end
 
   def formatted_address(type = :shipping)
@@ -95,6 +105,23 @@ class Order < ApplicationRecord
 
     # Group cart items by store since each store needs a separate order
     cart.cart_items.includes(:product).group_by { |item| item.product.store }.map do |store, items|
+      # Check inventory for all items before creating order
+      inventory_errors = []
+      items.each do |cart_item|
+        product = cart_item.product
+        if product.track_inventory 
+          available_stock = product.total_inventory
+          if available_stock < cart_item.quantity
+            inventory_errors << "#{product.name} only has #{available_stock} in stock (you requested #{cart_item.quantity})"
+          end
+        end
+      end
+      
+      # Raise error if any items are out of stock
+      unless inventory_errors.empty?
+        raise StandardError.new("Insufficient inventory: #{inventory_errors.join(', ')}")
+      end
+
       transaction do
         order = create!(
           user: cart.user,
@@ -175,5 +202,52 @@ class Order < ApplicationRecord
   def calculate_tax_amount
     # Simple 8% tax rate
     subtotal * 0.08
+  end
+
+  def send_order_confirmation_email
+    # Send email asynchronously to avoid blocking order creation
+    OrderMailer.order_confirmation(self).deliver_later
+  end
+
+  def send_status_update_email
+    # Don't send email for initial 'pending' status or if status hasn't actually changed
+    return if status == 'pending' && status_previous_change&.first.nil?
+    
+    previous_status = status_previous_change&.first
+    OrderMailer.order_status_update(self, previous_status).deliver_later
+  end
+
+  def reduce_inventory!
+    order_items.each do |item|
+      product = item.product
+      if product.track_inventory
+        # Check if product has variants
+        if product.has_variants?
+          # For products with variants, we need to reduce inventory from the specific variant
+          # For now, reduce from base product inventory
+          if product.inventory >= item.quantity
+            product.decrement!(:inventory, item.quantity)
+          else
+            raise StandardError.new("Insufficient inventory for #{product.name}")
+          end
+        else
+          # Simple product - reduce from main inventory
+          if product.inventory >= item.quantity
+            product.decrement!(:inventory, item.quantity)
+          else
+            raise StandardError.new("Insufficient inventory for #{product.name}")
+          end
+        end
+      end
+    end
+  end
+
+  def restore_inventory!
+    order_items.each do |item|
+      product = item.product
+      if product.track_inventory
+        product.increment!(:inventory, item.quantity)
+      end
+    end
   end
 end

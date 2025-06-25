@@ -1,0 +1,50 @@
+YOUR ORDER HAS SHIPPED!
+
+Hi <%= @user.first_name %>,
+
+Great news! Your order is on its way to you.
+
+ORDER <%= @order.order_number %>
+=============================
+Status: Shipped
+Your order has been shipped and is on its way to you!
+<% if @tracking_number %>
+Tracking Number: <%= @tracking_number %>
+<% end %>
+
+ITEMS SHIPPED
+=============
+<% @order_items.each do |item| %>
+<%= item.product_name %>
+Qty: <%= item.quantity %>
+<% if item.product.store %>From <%= item.product.store.name %><% end %>
+
+<% end %>
+
+SHIPPING ADDRESS
+================
+<%= @shipping_address['firstName'] %> <%= @shipping_address['lastName'] %>
+<%= @shipping_address['address1'] %>
+<% if @shipping_address['address2'].present? %><%= @shipping_address['address2'] %>
+<% end %><%= @shipping_address['city'] %>, <%= @shipping_address['state'] %> <%= @shipping_address['zipCode'] %>
+<%= @shipping_address['country'] %>
+
+WHAT TO EXPECT
+==============
+- Delivery Time: 3-7 business days for standard shipping
+- Tracking Updates: Your package will be scanned at various points during transit
+- Delivery: Most packages are delivered during normal business hours
+- Questions: Contact us if you don't receive your package within the expected timeframe
+
+<% if @tracking_number %>Track your package: [tracking link would go here]
+<% else %>View order details: <%= "#{root_url}dashboard" %>
+<% end %>
+
+QUESTIONS?
+==========
+Contact us at support@indieout.com or call 1-555-0123
+Please include your order number: <%= @order.order_number %>
+
+--
+IndieOut
+Connecting you with authentic outdoor gear makers

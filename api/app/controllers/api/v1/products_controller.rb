@@ -6,7 +6,19 @@ class Api::V1::ProductsController < ApplicationController
 
   def index
     # Public endpoint - show active products
-    products = Product.includes(:store, :category, :product_variants).active
+    products = Product.includes(:store, :category, :product_variants, :product_images).active
+    
+    # Search functionality
+    if params[:search].present?
+      search_term = params[:search].strip.downcase
+      products = products.where(
+        "LOWER(products.name) LIKE :search OR " +
+        "LOWER(products.description) LIKE :search OR " +
+        "LOWER(products.short_description) LIKE :search OR " +
+        "LOWER(products.sku) LIKE :search",
+        search: "%#{search_term}%"
+      )
+    end
     
     # Filter by category if provided (with hierarchical support)
     if params[:category_id].present? || params[:category_slug].present?
@@ -29,12 +41,41 @@ class Api::V1::ProductsController < ApplicationController
       products = products.where(store_id: params[:store_id])
     end
     
-    products = products.limit(100) # Increased limit for better user experience
+    # Sorting
+    sort_by = params[:sort_by] || 'created_at'
+    sort_order = params[:sort_order] || 'desc'
+    
+    case sort_by
+    when 'name'
+      products = products.order(name: sort_order)
+    when 'price_low_high'
+      products = products.order(base_price: :asc)
+    when 'price_high_low'
+      products = products.order(base_price: :desc)
+    when 'newest'
+      products = products.order(created_at: :desc)
+    else
+      products = products.order(created_at: :desc)
+    end
+    
+    # Pagination
+    page = (params[:page] || 1).to_i
+    per_page = (params[:per_page] || 24).to_i.clamp(1, 100)
+    
+    # Apply offset and limit for pagination
+    total_count = products.count
+    products = products.offset((page - 1) * per_page).limit(per_page)
     
     render json: {
       success: true,
       data: {
         products: products.map { |product| serialize_product(product) }
+      },
+      meta: {
+        current_page: page,
+        total_pages: (total_count.to_f / per_page).ceil,
+        total_count: total_count,
+        per_page: per_page
       }
     }
   end
@@ -65,6 +106,11 @@ class Api::V1::ProductsController < ApplicationController
         create_variants(product, params[:variants])
       end
       
+      # Create product images if provided
+      if params[:product][:images].present?
+        create_product_images(product, params[:product][:images])
+      end
+      
       render json: {
         success: true,
         data: {
@@ -84,6 +130,13 @@ class Api::V1::ProductsController < ApplicationController
       # Update variants if provided
       if params[:variants].present?
         update_variants(@product, params[:variants])
+      end
+      
+      # Update product images if provided
+      if params[:product][:images].present?
+        # Replace all images with new ones
+        @product.product_images.destroy_all
+        create_product_images(@product, params[:product][:images])
       end
       
       render json: {
@@ -110,7 +163,7 @@ class Api::V1::ProductsController < ApplicationController
 
   # Get products for current seller
   def my_products
-    products = current_user.store.products.includes(:category, :product_variants)
+    products = current_user.store.products.includes(:category, :product_variants, :product_images)
     
     # Filter by status if provided
     if params[:status].present? && Product.statuses.key?(params[:status])
@@ -147,7 +200,7 @@ class Api::V1::ProductsController < ApplicationController
       :sku, :track_inventory, :inventory, :low_stock_threshold, :weight, :dimensions,
       :meta_title, :meta_description, :status, :is_featured, :category_id,
       :option1_name, :option2_name, :option3_name,
-      materials: [], images: [], videos: []
+      materials: []
     )
   end
 
@@ -191,6 +244,39 @@ class Api::V1::ProductsController < ApplicationController
     create_variants(product, variants_params)
   end
 
+  def create_product_images(product, image_urls)
+    image_urls.each_with_index do |image_url, index|
+      # Extract the Shrine file ID from the URL for proper storage
+      file_id = extract_file_id_from_url(image_url)
+      
+      # Create ProductImage with Shrine data
+      product.product_images.create!(
+        position: index + 1,
+        image: {
+          'id' => file_id,
+          'storage' => 'store',
+          'metadata' => {
+            'filename' => file_id.split('/').last,
+            'mime_type' => 'image/jpeg' # Default, Shrine will correct this
+          }
+        }
+      )
+    end
+  end
+
+  def extract_file_id_from_url(url)
+    # Extract the file ID from URLs like:
+    # http://localhost:3000/uploads/store/abc123.jpg
+    # or just abc123.jpg
+    if url.include?('/uploads/store/')
+      url.split('/uploads/store/').last
+    elsif url.include?('/uploads/')
+      url.split('/uploads/').last
+    else
+      url
+    end
+  end
+
   def serialize_product(product, include_variants: false)
     result = {
       id: product.id,
@@ -209,8 +295,18 @@ class Api::V1::ProductsController < ApplicationController
       weight: product.weight,
       dimensions: product.dimensions,
       materials: product.materials,
-      images: product.images,
-      videos: product.videos,
+      images: product.product_images.ordered.map do |product_image|
+        if product_image.image_url.present?
+          product_image.image_url
+        elsif product_image.image_data.present?
+          begin
+            data = product_image.image_data.is_a?(String) ? JSON.parse(product_image.image_data) : product_image.image_data
+            data['id']
+          rescue JSON::ParserError
+            nil
+          end
+        end
+      end.compact,
       meta_title: product.meta_title,
       meta_description: product.meta_description,
       status: product.status,

@@ -32,6 +32,15 @@ Shrine.plugin :validation_helpers # for validating uploaded files
 Shrine.plugin :determine_mime_type, analyzer: :marcel # for determining MIME type
 Shrine.plugin :store_dimensions, analyzer: :ruby_vips # for storing image dimensions
 Shrine.plugin :derivatives # for creating image derivatives (replaces processing, versions, delete_raw)
+Shrine.plugin :url_options, store: -> {
+  if Rails.application.routes.default_url_options[:host]
+    port = Rails.application.routes.default_url_options[:port]
+    host = Rails.application.routes.default_url_options[:host]
+    { host: "http://#{host}#{port ? ":#{port}" : ""}" }
+  else
+    { host: ENV.fetch('RAILS_HOST', 'http://localhost:5000') }
+  end
+}
 
 # Configure derivatives (thumbnails and optimized images)
 Shrine.plugin :derivatives, create_on_promote: true

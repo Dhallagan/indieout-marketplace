@@ -1,10 +1,12 @@
-import { ReactNode, useState, useEffect } from 'react'
+import { ReactNode, useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useCart } from '@/contexts/CartContext'
 import { UserRole } from '@/types/auth'
 import { getCategories } from '@/services/categoryService'
-import { Category } from '@/types/api-generated'
+import { getProducts } from '@/services/productService'
+import { Category, Product } from '@/types/api-generated'
+import { getProductImageUrl } from '@/utils/imageHelpers'
 
 interface LayoutProps {
   children: ReactNode
@@ -18,6 +20,11 @@ export default function Layout({ children }: LayoutProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [showUserDropdown, setShowUserDropdown] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<Product[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false)
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const searchRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadCategories()
@@ -41,14 +48,55 @@ export default function Layout({ children }: LayoutProps) {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
-      navigate(`/shop?search=${encodeURIComponent(searchQuery.trim())}`)
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
+      setShowSearchDropdown(false)
+      setSearchQuery('')
     }
+  }
+
+  const handleSearchInput = (value: string) => {
+    setSearchQuery(value)
+    
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+    
+    // Don't search for very short queries
+    if (value.trim().length < 2) {
+      setSearchResults([])
+      setShowSearchDropdown(false)
+      return
+    }
+    
+    // Debounce search - wait 300ms after user stops typing
+    setIsSearching(true)
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const result = await getProducts({
+          search: value.trim(),
+          per_page: 5 // Only show top 5 results in dropdown
+        })
+        setSearchResults(result.products)
+        setShowSearchDropdown(result.products.length > 0)
+      } catch (error) {
+        console.error('Search failed:', error)
+        setSearchResults([])
+      } finally {
+        setIsSearching(false)
+      }
+    }, 300)
   }
 
   // Close dropdowns when clicking outside
   useEffect(() => {
-    const handleClickOutside = () => {
+    const handleClickOutside = (event: MouseEvent) => {
       setShowUserDropdown(false)
+      
+      // Close search dropdown if clicked outside
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSearchDropdown(false)
+      }
     }
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
@@ -95,16 +143,17 @@ export default function Layout({ children }: LayoutProps) {
               </div>
             </div>
 
-            <div className="flex items-center space-x-6">
+            <div className="flex items-center flex-1 space-x-6">
               {/* Search Bar */}
-              <div className="hidden lg:block">
+              <div className="hidden lg:block relative flex-1 max-w-2xl mx-8" ref={searchRef}>
                 <form onSubmit={handleSearch} className="relative">
                   <input
                     type="text"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => handleSearchInput(e.target.value)}
+                    onFocus={() => searchQuery.length >= 2 && setShowSearchDropdown(true)}
                     placeholder="Find your gear..."
-                    className="w-80 px-4 py-2.5 pl-10 pr-4 text-sm text-charcoal-800 bg-sand-25 border border-sand-300 rounded-full focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400 transition-all placeholder:text-charcoal-500"
+                    className="w-full px-4 py-2.5 pl-10 pr-4 text-sm text-charcoal-800 bg-sand-25 border border-sand-300 rounded-full focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400 transition-all placeholder:text-charcoal-500"
                   />
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <svg className="h-4 w-4 text-charcoal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,7 +163,11 @@ export default function Layout({ children }: LayoutProps) {
                   {searchQuery && (
                     <button
                       type="button"
-                      onClick={() => setSearchQuery('')}
+                      onClick={() => {
+                        setSearchQuery('')
+                        setShowSearchDropdown(false)
+                        setSearchResults([])
+                      }}
                       className="absolute inset-y-0 right-2 flex items-center text-charcoal-400 hover:text-charcoal-600 transition-colors"
                     >
                       <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,6 +176,56 @@ export default function Layout({ children }: LayoutProps) {
                     </button>
                   )}
                 </form>
+                
+                {/* Search Dropdown */}
+                {showSearchDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-sand-200 overflow-hidden">
+                    {isSearching ? (
+                      <div className="p-4 text-center">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-forest-600 mx-auto"></div>
+                      </div>
+                    ) : (
+                      <>
+                        {searchResults.map((product) => (
+                          <Link
+                            key={product.id}
+                            to={`/shop/products/${product.slug}`}
+                            className="block px-4 py-3 hover:bg-sand-50 transition-colors border-b border-sand-100 last:border-b-0"
+                            onClick={() => {
+                              setShowSearchDropdown(false)
+                              setSearchQuery('')
+                            }}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <img
+                                src={getProductImageUrl(product.primary_image || product.images?.[0])}
+                                alt={product.name}
+                                className="w-12 h-12 object-cover rounded-lg"
+                                onError={(e) => {
+                                  e.currentTarget.src = '/placeholder-product.svg'
+                                }}
+                              />
+                              <div className="flex-1">
+                                <h4 className="text-sm font-semibold text-charcoal-900">{product.name}</h4>
+                                <p className="text-xs text-charcoal-600">${product.base_price}</p>
+                              </div>
+                            </div>
+                          </Link>
+                        ))}
+                        <Link
+                          to={`/search?q=${encodeURIComponent(searchQuery)}`}
+                          className="block px-4 py-3 bg-forest-50 hover:bg-forest-100 text-center text-sm font-medium text-forest-700 transition-colors"
+                          onClick={() => {
+                            setShowSearchDropdown(false)
+                            setSearchQuery('')
+                          }}
+                        >
+                          View all results for "{searchQuery}"
+                        </Link>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Desktop Navigation Actions */}
@@ -167,7 +270,7 @@ export default function Layout({ children }: LayoutProps) {
                     >
                       <div className="w-8 h-8 bg-gradient-to-br from-forest-400 to-forest-600 rounded-full flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
                         <span className="text-xs font-bold text-white">
-                          {user?.firstName?.charAt(0) || 'U'}
+                          {user?.first_name?.charAt(0) || 'U'}
                         </span>
                       </div>
                       <svg className="w-4 h-4 text-charcoal-500 group-hover:text-charcoal-700 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -179,17 +282,17 @@ export default function Layout({ children }: LayoutProps) {
                     {showUserDropdown && (
                       <div className="absolute right-0 top-full mt-2 w-56 bg-white shadow-xl rounded-lg border border-charcoal-200 py-2 z-[9999]">
                         <div className="px-4 py-2 border-b border-charcoal-200">
-                          <div className="text-sm font-medium text-charcoal-900">{user?.firstName} {user?.lastName}</div>
+                          <div className="text-sm font-medium text-charcoal-900">{user?.first_name} {user?.last_name}</div>
                           <div className="text-xs text-charcoal-500">{user?.email}</div>
                         </div>
                         
                         {/* Customer Functions */}
                         <div className="px-4 py-2">
                           <div className="text-xs font-semibold text-charcoal-500 uppercase tracking-wider mb-2">
-                            Shopping
+                            {hasRole(UserRole.SELLER_ADMIN) ? 'Personal' : 'Shopping'}
                           </div>
                           <Link
-                            to="/dashboard"
+                            to="/dashboard?tab=purchases"
                             className="block px-3 py-2 text-sm text-charcoal-700 hover:bg-sand-50 rounded-md"
                             onClick={() => setShowUserDropdown(false)}
                           >
@@ -207,22 +310,12 @@ export default function Layout({ children }: LayoutProps) {
                         {/* Seller Functions */}
                         {hasRole(UserRole.SELLER_ADMIN) ? (
                           <div className="px-4 py-2 border-t border-charcoal-200">
-                            <div className="text-xs font-semibold text-charcoal-500 uppercase tracking-wider mb-2">
-                              Selling
-                            </div>
                             <Link
-                              to="/seller/products"
-                              className="block px-3 py-2 text-sm text-charcoal-700 hover:bg-sand-50 rounded-md"
+                              to="/seller/dashboard"
+                              className="block px-3 py-2 text-sm text-forest-600 hover:bg-forest-50 rounded-md font-medium"
                               onClick={() => setShowUserDropdown(false)}
                             >
-                              My Products
-                            </Link>
-                            <Link
-                              to="/seller/settings"
-                              className="block px-3 py-2 text-sm text-charcoal-700 hover:bg-sand-50 rounded-md"
-                              onClick={() => setShowUserDropdown(false)}
-                            >
-                              Seller Settings
+                              🏪 Go to My Store
                             </Link>
                           </div>
                         ) : (
@@ -352,7 +445,7 @@ export default function Layout({ children }: LayoutProps) {
                 {isAuthenticated ? (
                   <>
                     <div className="px-3 py-2 text-sm text-charcoal-500">
-                      Welcome, {user?.firstName}
+                      Welcome, {user?.first_name}
                     </div>
                     <Link
                       to="/dashboard"

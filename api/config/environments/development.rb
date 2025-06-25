@@ -33,10 +33,24 @@ Rails.application.configure do
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :local
 
-  # Don't care if the mailer can't send.
-  config.action_mailer.raise_delivery_errors = false
-
+  # Enable mailer error raising and configure delivery method for development
+  config.action_mailer.raise_delivery_errors = true
+  config.action_mailer.delivery_method = :smtp
   config.action_mailer.perform_caching = false
+  
+  # Default URL options for mailer
+  config.action_mailer.default_url_options = { host: 'localhost:5000' }
+  
+  # SMTP settings for development (using MailCatcher or similar)
+  config.action_mailer.smtp_settings = {
+    address: ENV['SMTP_HOST'] || 'localhost',
+    port: ENV['SMTP_PORT'] || 1025,
+    domain: 'localhost',
+    user_name: ENV['SMTP_USER'],
+    password: ENV['SMTP_PASS'],
+    authentication: (ENV['SMTP_USER'].present? ? 'plain' : nil),
+    enable_starttls_auto: ENV['SMTP_HOST'] != 'localhost'
+  }
 
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log
@@ -65,6 +79,10 @@ Rails.application.configure do
 
   # Uncomment if you wish to allow Action Cable access from any origin.
   # config.action_cable.disable_request_forgery_protection = true
+  
+  # Configure default URL options for controllers
+  Rails.application.routes.default_url_options[:host] = 'localhost'
+  Rails.application.routes.default_url_options[:port] = 5000
 
   # Raise error when a before_action's only/except options reference missing actions
   config.action_controller.raise_on_missing_callback_actions = true

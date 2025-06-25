@@ -5,13 +5,13 @@ import { UserRole } from '@/types/auth'
 import { getCategories } from '@/services/categoryService'
 import { createProduct, CreateProductData, ProductVariant } from '@/services/productService'
 import { Category } from '@/types/api-generated'
-import AdminLayout from '@/components/admin/AdminLayout'
+import SellerLayout from '@/components/seller/SellerLayout'
 import Page from '@/components/admin/Page'
 import Card from '@/components/admin/Card'
 import Button from '@/components/admin/Button'
 import TextField from '@/components/admin/TextField'
 import Select from '@/components/admin/Select'
-import ImageUpload from '@/components/admin/ImageUpload'
+import ProductImageUpload from '@/components/seller/ProductImageUpload'
 import RadioGroup from '@/components/admin/RadioGroup'
 import Checkbox from '@/components/admin/Checkbox'
 import CategorySelector from '@/components/admin/CategorySelector'
@@ -50,13 +50,13 @@ export default function ProductCreatePage() {
 
   if (!hasRole(UserRole.SELLER_ADMIN)) {
     return (
-      <AdminLayout>
+      <SellerLayout>
         <Page title="Access Denied">
           <Card sectioned>
             <p className="text-clay-600">You need seller privileges to create products.</p>
           </Card>
         </Page>
-      </AdminLayout>
+      </SellerLayout>
     )
   }
 
@@ -161,7 +161,7 @@ export default function ProductCreatePage() {
 
 
   return (
-    <AdminLayout>
+    <SellerLayout>
       <Page
         title="Add New Product"
         subtitle="Create a new product for your store"
@@ -388,7 +388,7 @@ export default function ProductCreatePage() {
           <Card title="Product Images" sectioned>
             <FormLayout>
               <FormLayoutGroup>
-                <ImageUpload
+                <ProductImageUpload
                   images={formData.images || []}
                   onChange={(images) => updateFormData('images', images)}
                   maxImages={8}
@@ -463,6 +463,6 @@ export default function ProductCreatePage() {
           </Card>
         </div>
       </Page>
-    </AdminLayout>
+    </SellerLayout>
   )
 }

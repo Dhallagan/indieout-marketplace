@@ -32,7 +32,7 @@ export default function HomePage() {
     const loadData = async () => {
       try {
         // Load categories and products in parallel
-        const [categoriesData, productsData] = await Promise.all([
+        const [categoriesData, productsResult] = await Promise.all([
           getCategories(),
           getProducts()
         ])
@@ -59,7 +59,7 @@ export default function HomePage() {
         setCategories(categoriesData)
         
         // Filter featured products
-        const featured = productsData.filter(product => product.is_featured)
+        const featured = productsResult.products.filter(product => product.is_featured)
         setFeaturedProducts(featured.slice(0, 8)) // Show max 8 featured products
         
       } catch (error) {

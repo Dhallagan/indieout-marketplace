@@ -11,7 +11,8 @@ export default function ShopPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '')
+  const [totalProducts, setTotalProducts] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1)
   const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '')
   const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '')
   const [selectedBrands, setSelectedBrands] = useState<string[]>(
@@ -22,41 +23,45 @@ export default function ShopPage() {
   const categoryFilter = searchParams.get('category')
   const featuredFilter = searchParams.get('featured') === 'true'
   const storeFilter = searchParams.get('store')
+  const sortBy = searchParams.get('sort') || 'newest'
 
 
   useEffect(() => {
     loadData()
-  }, [categoryFilter, featuredFilter, storeFilter, searchQuery, minPrice, maxPrice, selectedBrands])
+  }, [categoryFilter, featuredFilter, storeFilter, minPrice, maxPrice, selectedBrands])
 
   const loadData = async () => {
     try {
       setIsLoading(true)
       
       // Build filters for backend
-      const filters: { category_slug?: string; store_id?: string } = {}
+      const filters: { 
+        category_slug?: string; 
+        store_id?: string;
+        search?: string;
+        sort_by?: string;
+        page?: number;
+        per_page?: number;
+      } = {
+        page: currentPage,
+        per_page: 24
+      }
+      
       if (categoryFilter) filters.category_slug = categoryFilter
       if (storeFilter) filters.store_id = storeFilter
+      if (sortBy) filters.sort_by = sortBy
       
-      const [productsData, categoriesData] = await Promise.all([
-        getProducts(filters), // Backend handles hierarchical filtering
+      const [productsResult, categoriesData] = await Promise.all([
+        getProducts(filters),
         getCategories()
       ])
       
-      let filteredProducts = productsData
+      let filteredProducts = productsResult.products
       
+      // Apply frontend-only filters
       // Apply featured filter if specified (frontend filter)
       if (featuredFilter) {
         filteredProducts = filteredProducts.filter(p => p.is_featured)
-      }
-      
-      // Apply search filter if specified (frontend filter)
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase()
-        filteredProducts = filteredProducts.filter(p => 
-          p.name.toLowerCase().includes(query) ||
-          p.description.toLowerCase().includes(query) ||
-          p.short_description?.toLowerCase().includes(query)
-        )
       }
       
       // Apply price filters (frontend filter)
@@ -78,6 +83,7 @@ export default function ShopPage() {
       
       setProducts(filteredProducts)
       setCategories(categoriesData)
+      setTotalProducts(productsResult.meta?.total_count || filteredProducts.length)
     } catch (error) {
       console.error('Failed to load shop data:', error)
     } finally {
@@ -95,19 +101,8 @@ export default function ShopPage() {
     setSearchParams(newParams)
   }
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    const newParams = new URLSearchParams(searchParams)
-    if (searchQuery.trim()) {
-      newParams.set('search', searchQuery.trim())
-    } else {
-      newParams.delete('search')
-    }
-    setSearchParams(newParams)
-  }
 
   const clearFilters = () => {
-    setSearchQuery('')
     setMinPrice('')
     setMaxPrice('')
     setSelectedBrands([])
@@ -241,7 +236,7 @@ export default function ShopPage() {
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-sand-200 p-8 sticky top-24">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-xl font-black text-charcoal-900 tracking-tight uppercase">Refine</h3>
-                {(categoryFilter || featuredFilter || searchQuery || minPrice || maxPrice || selectedBrands.length > 0) && (
+                {(categoryFilter || featuredFilter || minPrice || maxPrice || selectedBrands.length > 0) && (
                   <button
                     onClick={clearFilters}
                     className="text-xs font-bold text-forest-600 hover:text-forest-700 transition-colors uppercase tracking-wider"
@@ -251,29 +246,6 @@ export default function ShopPage() {
                 )}
               </div>
 
-              {/* Search within results */}
-              <div className="mb-8">
-                <h4 className="text-xs font-black text-charcoal-500 uppercase tracking-wider mb-4">Search</h4>
-                <form onSubmit={handleSearch}>
-                  <div className="flex items-center bg-white rounded-lg border-2 border-sand-200 hover:border-forest-300 focus-within:border-forest-500 transition-colors">
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search products..."
-                      className="flex-1 px-4 py-3 text-sm rounded-l-lg focus:outline-none placeholder-charcoal-400"
-                    />
-                    <button
-                      type="submit"
-                      className="bg-forest-600 text-white px-4 py-3 rounded-r-lg hover:bg-forest-700 transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                    </button>
-                  </div>
-                </form>
-              </div>
 
               {/* Categories Filter */}
               <div className="mb-8">
@@ -444,7 +416,7 @@ export default function ShopPage() {
             {/* Filter Tags & Results Header */}
             <div className="mb-8">
               {/* Active Filter Tags */}
-              {(categoryFilter || featuredFilter || searchQuery) && (
+              {(categoryFilter || featuredFilter) && (
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                   <span className="text-sm font-medium text-charcoal-600">Active filters:</span>
                   {categoryFilter && (
@@ -477,24 +449,6 @@ export default function ShopPage() {
                       </button>
                     </span>
                   )}
-                  {searchQuery && (
-                    <span className="inline-flex items-center bg-forest-100 text-forest-800 px-3 py-1 rounded-full text-sm font-medium">
-                      "{searchQuery}"
-                      <button
-                        onClick={() => {
-                          setSearchQuery('')
-                          const newParams = new URLSearchParams(searchParams)
-                          newParams.delete('search')
-                          setSearchParams(newParams)
-                        }}
-                        className="ml-2 hover:text-forest-900"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </span>
-                  )}
                 </div>
               )}
               
@@ -506,7 +460,6 @@ export default function ShopPage() {
                   <p className="text-sm text-charcoal-500 mt-1">
                     {featuredFilter ? 'Curated by adventure experts' :
                      currentCategory ? `${currentCategory.name} essentials from trusted makers` :
-                     searchQuery ? `Search results for "${searchQuery}"` :
                      'From independent makers worldwide'}
                   </p>
                 </div>
@@ -532,9 +485,7 @@ export default function ShopPage() {
               columns={3}
               showStore={true}
               emptyMessage={
-                searchQuery 
-                  ? `No gear matches "${searchQuery}" - try a different search!`
-                  : categoryFilter 
+                categoryFilter 
                   ? `No ${currentCategory?.name.toLowerCase()} gear available yet - check back soon!`
                   : 'No gear available right now - adventure awaits!'
               }

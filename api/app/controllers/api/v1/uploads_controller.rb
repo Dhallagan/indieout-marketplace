@@ -90,12 +90,47 @@ class Api::V1::UploadsController < ApplicationController
 
   # Delete uploaded image
   def destroy
-    # For standalone uploads, we'd need to track them differently
-    # For now, deletion happens through product image management
-    render json: {
-      success: true,
-      message: 'Use product image management for deletion'
-    }
+    filename = params[:filename]
+    image_url = params[:image_url] # URL passed from frontend
+    
+    begin
+      # Try to find and delete the file using Shrine
+      # This handles both cache and store locations
+      uploader = ImageUploader.new(:store)
+      file_id = filename.gsub(/\.[^.]+$/, '') # Remove extension if present
+      
+      # Try to construct the uploaded file and delete it
+      uploaded_file = uploader.uploaded_file(id: file_id)
+      if uploaded_file&.exists?
+        # Use the URL from the uploaded file if not passed from frontend
+        image_url ||= uploaded_file.url
+        uploaded_file.delete
+      end
+      
+      # Clean up ProductImage records that reference this file
+      if file_id.present?
+        # Find ProductImage records that reference this file
+        product_images_to_delete = ProductImage.where("image_data->>'id' = ?", file_id)
+        
+        product_images_to_delete.find_each do |product_image|
+          Rails.logger.info "Removing ProductImage #{product_image.id} for file #{file_id}"
+          product_image.destroy
+        end
+      end
+      
+      render json: {
+        success: true,
+        message: 'Image deleted successfully'
+      }
+    rescue => e
+      Rails.logger.error "Image deletion error: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      # Don't fail hard on deletion errors - the file might already be gone
+      render json: {
+        success: true,
+        message: 'Image deletion completed'
+      }
+    end
   end
 
   private

@@ -4,14 +4,15 @@ import { useAuth } from '@/hooks/useAuth'
 import { UserRole } from '@/types/auth'
 import { getCategories } from '@/services/categoryService'
 import { getMyProducts, updateProduct, CreateProductData, ProductVariant } from '@/services/productService'
+import { productImageService } from '@/services/productImageService'
 import { Category, Product } from '@/types/api-generated'
-import AdminLayout from '@/components/admin/AdminLayout'
+import SellerLayout from '@/components/seller/SellerLayout'
 import Page from '@/components/admin/Page'
 import Card from '@/components/admin/Card'
 import Button from '@/components/admin/Button'
 import TextField from '@/components/admin/TextField'
 import Select from '@/components/admin/Select'
-import ImageUpload from '@/components/admin/ImageUpload'
+import ProductImageUpload from '@/components/seller/ProductImageUpload'
 import RadioGroup from '@/components/admin/RadioGroup'
 import Checkbox from '@/components/admin/Checkbox'
 import CategorySelector from '@/components/admin/CategorySelector'
@@ -67,6 +68,17 @@ export default function ProductEditPage() {
     loadData()
   }, [id])
 
+  const loadProductImages = async (productId: string) => {
+    try {
+      // Fetch the product images using the productImageService
+      const images = await productImageService.list(productId)
+      return images || []
+    } catch (error) {
+      console.error('Failed to load product images:', error)
+      return []
+    }
+  }
+
   const loadData = async () => {
     try {
       setIsLoading(true)
@@ -87,6 +99,9 @@ export default function ProductEditPage() {
       
       setProduct(productToEdit)
       
+      // Load product images separately to get the proper format
+      const productImages = await loadProductImages(productToEdit.id)
+      
       // Populate form with existing product data
       setFormData({
         name: productToEdit.name || '',
@@ -101,7 +116,7 @@ export default function ProductEditPage() {
         weight: productToEdit.weight || 0,
         dimensions: productToEdit.dimensions || '',
         materials: productToEdit.materials || [],
-        images: productToEdit.images || [],
+        images: productImages,
         videos: productToEdit.videos || [],
         meta_title: productToEdit.meta_title || '',
         meta_description: productToEdit.meta_description || '',
@@ -130,10 +145,20 @@ export default function ProductEditPage() {
       
       if (!product) return
       
-      // Call update API (you'll need to implement this in productService)
-      console.log('Updating product:', product.id, formData)
+      // Prepare update data
+      const updateData: CreateProductData = {
+        ...formData,
+        // Ensure materials is an array
+        materials: formData.materials || [],
+        // Don't send images in the update - they're managed separately
+        images: undefined,
+        videos: undefined
+      }
       
-      // For now, we'll just show success and navigate back
+      // Call update API
+      await updateProduct(product.id, updateData)
+      
+      // Show success and navigate back
       alert('Product updated successfully!')
       navigate('/seller/products')
     } catch (error: any) {
@@ -150,17 +175,17 @@ export default function ProductEditPage() {
 
   if (isLoading) {
     return (
-      <AdminLayout>
+      <SellerLayout>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest-600"></div>
         </div>
-      </AdminLayout>
+      </SellerLayout>
     )
   }
 
   if (!product) {
     return (
-      <AdminLayout>
+      <SellerLayout>
         <Page title="Product Not Found">
           <Card sectioned>
             <p className="text-clay-600 mb-4">The product you're trying to edit was not found.</p>
@@ -169,12 +194,12 @@ export default function ProductEditPage() {
             </Button>
           </Card>
         </Page>
-      </AdminLayout>
+      </SellerLayout>
     )
   }
 
   return (
-    <AdminLayout>
+    <SellerLayout>
       <Page
         title={`Edit: ${product.name}`}
         subtitle="Update your product information"
@@ -257,6 +282,16 @@ export default function ProductEditPage() {
             </FormLayout>
           </Card>
 
+          <Card title="Product Images" sectioned>
+            <ProductImageUpload
+              productId={id}
+              images={formData.images}
+              onChange={(images) => updateFormData('images', images)}
+              maxImages={10}
+              helpText="Upload high-quality images of your product. The first image will be the primary image."
+            />
+          </Card>
+
           <Card title="Inventory & Details" sectioned>
             <FormLayout>
               <FormLayoutGroup>
@@ -309,7 +344,8 @@ export default function ProductEditPage() {
           <Card title="Product Images" sectioned>
             <FormLayout>
               <FormLayoutGroup>
-                <ImageUpload
+                <ProductImageUpload
+                  productId={id}
                   images={formData.images || []}
                   onChange={(images) => updateFormData('images', images)}
                   maxImages={8}
@@ -384,6 +420,6 @@ export default function ProductEditPage() {
           </Card>
         </div>
       </Page>
-    </AdminLayout>
+    </SellerLayout>
   )
 }

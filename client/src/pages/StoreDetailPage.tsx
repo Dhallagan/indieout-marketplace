@@ -30,8 +30,8 @@ export default function StoreDetailPage() {
       setStore(storeData)
       
       // Load store products
-      const storeProducts = await getProducts({ store_id: storeData.id })
-      setProducts(storeProducts)
+      const storeProductsResult = await getProducts({ store_id: storeData.id })
+      setProducts(storeProductsResult.products)
       
     } catch (error) {
       console.error('Failed to load store data:', error)

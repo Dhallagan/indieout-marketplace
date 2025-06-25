@@ -4,8 +4,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { UserRole } from '@/types/auth'
 import { getMyProducts, deleteProduct } from '@/services/productService'
 import { Product } from '@/types/api-generated'
-import AdminLayout from '@/components/admin/AdminLayout'
-import Page from '@/components/admin/Page'
+import SellerLayout from '@/components/seller/SellerLayout'
 import Card from '@/components/admin/Card'
 import Button from '@/components/admin/Button'
 
@@ -18,8 +17,11 @@ export default function ProductManagementPage() {
 
   if (!hasRole(UserRole.SELLER_ADMIN)) {
     return (
-      <AdminLayout>
-        <Page title="Access Denied">
+      <SellerLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold text-charcoal-900">Access Denied</h1>
+          </div>
           <Card sectioned>
             <div className="text-center py-8">
               <p className="text-charcoal-600 mb-4">You need seller privileges to access this page.</p>
@@ -28,8 +30,8 @@ export default function ProductManagementPage() {
               </Link>
             </div>
           </Card>
-        </Page>
-      </AdminLayout>
+        </div>
+      </SellerLayout>
     )
   }
 
@@ -80,11 +82,13 @@ export default function ProductManagementPage() {
   }
 
   return (
-    <AdminLayout>
-      <Page
-        title="Products"
-        subtitle="Manage your product catalog"
-        actions={
+    <SellerLayout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-charcoal-900">Products</h1>
+            <p className="text-charcoal-600 mt-1">Manage your product catalog</p>
+          </div>
           <Link to="/seller/products/new">
             <Button variant="primary">
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,8 +97,7 @@ export default function ProductManagementPage() {
               Add Product
             </Button>
           </Link>
-        }
-      >
+        </div>
         {error && (
           <Card sectioned>
             <div className="text-center">
@@ -202,7 +205,7 @@ export default function ProductManagementPage() {
             </div>
           )}
         </Card>
-      </Page>
-    </AdminLayout>
+      </div>
+    </SellerLayout>
   )
 }

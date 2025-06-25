@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { UserRole } from '@/types/auth'
-import AdminLayout from '@/components/admin/AdminLayout'
-import Page from '@/components/admin/Page'
+import SellerLayout from '@/components/seller/SellerLayout'
 import Card from '@/components/admin/Card'
 import Button from '@/components/admin/Button'
 import TextField from '@/components/admin/TextField'
@@ -35,13 +34,16 @@ export default function SellerSettingsPage() {
 
   if (!hasRole(UserRole.SELLER_ADMIN)) {
     return (
-      <AdminLayout>
-        <Page title="Access Denied">
+      <SellerLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold text-charcoal-900">Access Denied</h1>
+          </div>
           <Card sectioned>
             <p className="text-clay-600">You need seller privileges to access settings.</p>
           </Card>
-        </Page>
-      </AdminLayout>
+        </div>
+      </SellerLayout>
     )
   }
 
@@ -68,15 +70,12 @@ export default function SellerSettingsPage() {
   ]
 
   return (
-    <AdminLayout>
-      <Page
-        title="Seller Settings"
-        subtitle="Manage your store and account preferences"
-        breadcrumbs={[
-          { content: 'Dashboard', url: '/dashboard' },
-          { content: 'Settings' }
-        ]}
-      >
+    <SellerLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-charcoal-900">Seller Settings</h1>
+          <p className="text-charcoal-600 mt-1">Manage your store and account preferences</p>
+        </div>
         <div className="max-w-4xl space-y-6">
           {/* Tab Navigation */}
           <Card sectioned>
@@ -277,7 +276,7 @@ export default function SellerSettingsPage() {
             </div>
           </Card>
         </div>
-      </Page>
-    </AdminLayout>
+      </div>
+    </SellerLayout>
   )
 }

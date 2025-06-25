@@ -15,6 +15,9 @@ import ProductManagementPage from '@/pages/ProductManagementPage'
 import ProductCreatePage from '@/pages/ProductCreatePage'
 import ProductEditPage from '@/pages/ProductEditPage'
 import SellerSettingsPage from '@/pages/SellerSettingsPage'
+import SellerOrdersPage from '@/pages/seller/SellerOrdersPage'
+import SellerDashboardPage from '@/pages/seller/SellerDashboardPage'
+import SellerProductsPage from '@/pages/seller/SellerProductsPage'
 import ShopPage from '@/pages/ShopPage'
 import ProductDetailPage from '@/pages/ProductDetailPage'
 import StoreDetailPage from '@/pages/StoreDetailPage'
@@ -22,6 +25,7 @@ import CartPage from '@/pages/CartPage'
 import CheckoutPage from '@/pages/CheckoutPage'
 import CheckoutSuccessPage from '@/pages/CheckoutSuccessPage'
 import GuestOrderTrackingPage from '@/pages/GuestOrderTrackingPage'
+import SearchResultsPage from '@/pages/SearchResultsPage'
 import ProtectedRoute from '@/components/ProtectedRoute'
 
 function App() {
@@ -80,6 +84,14 @@ function App() {
       />
       {/* Seller Routes - Use SellerLayout */}
       <Route
+        path="/seller/dashboard"
+        element={
+          <ProtectedRoute>
+            <SellerDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/store/setup"
         element={
           <ProtectedRoute>
@@ -91,7 +103,7 @@ function App() {
         path="/seller/products"
         element={
           <ProtectedRoute>
-            <ProductManagementPage />
+            <SellerProductsPage />
           </ProtectedRoute>
         }
       />
@@ -119,6 +131,14 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/seller/orders"
+        element={
+          <ProtectedRoute>
+            <SellerOrdersPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Public Routes - With main layout */}
       <Route path="/*" element={
@@ -129,6 +149,7 @@ function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/apply-to-sell" element={<SellerApplicationPage />} />
             <Route path="/shop" element={<ShopPage />} />
+            <Route path="/search" element={<SearchResultsPage />} />
             <Route path="/shop/products/:slug" element={<ProductDetailPage />} />
             <Route path="/shop/stores/:slug" element={<StoreDetailPage />} />
             <Route path="/cart" element={<CartPage />} />

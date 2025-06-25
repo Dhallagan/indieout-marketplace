@@ -16,6 +16,10 @@ Rails.application.routes.draw do
         post :become_seller, to: 'auth#become_seller'
       end
 
+      # Profile management
+      get 'profile', to: 'profiles#show'
+      patch 'profile', to: 'profiles#update'
+
       # Public routes (no authentication required)
       namespace :public do
         resources :stores, only: [:index, :show]
@@ -44,6 +48,14 @@ Rails.application.routes.draw do
       resources :products, except: [:new, :edit] do
         collection do
           get :my_products
+        end
+        resources :product_images, only: [:index, :show, :create, :update, :destroy], path: 'images' do
+          collection do
+            patch :reorder
+          end
+          member do
+            patch :set_primary
+          end
         end
       end
 
@@ -100,6 +112,7 @@ Rails.application.routes.draw do
         member do
           patch :cancel
           patch :fulfill  # for store owners
+          patch :update_status  # for store owners
         end
       end
 
@@ -119,6 +132,7 @@ Rails.application.routes.draw do
       # File uploads (seller only)
       resources :uploads, only: [:create]
       delete 'uploads/:filename', to: 'uploads#destroy'
+      post 'uploads/product/:product_id', to: 'uploads#create_for_product'
 
       # Health check for API
       get :health, to: proc { [200, {}, [{ status: 'OK', timestamp: Time.current.iso8601 }.to_json]] }

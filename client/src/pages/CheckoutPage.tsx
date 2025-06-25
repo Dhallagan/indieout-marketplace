@@ -40,10 +40,11 @@ export default function CheckoutPage() {
   const [showAddressSelector, setShowAddressSelector] = useState(false)
   const [savedAddresses, setSavedAddresses] = useState<Address[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
+  const [saveAsDefault, setSaveAsDefault] = useState(true)
   
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
+    firstName: user?.first_name || '',
+    lastName: user?.last_name || '',
     email: user?.email || '',
     phone: '',
     address1: '',
@@ -60,6 +61,23 @@ export default function CheckoutPage() {
     cvv: '',
     nameOnCard: ''
   })
+
+  // Check for inventory issues in cart
+  const getInventoryIssues = () => {
+    if (!cart?.cart_items) return []
+    
+    return cart.cart_items.filter(item => {
+      const product = item.product
+      if (!product.track_inventory) return false
+      
+      return (
+        product.out_of_stock || 
+        item.quantity > product.total_inventory
+      )
+    })
+  }
+
+  const inventoryIssues = getInventoryIssues()
 
   // Redirect if cart is empty
   useEffect(() => {
@@ -133,13 +151,47 @@ export default function CheckoutPage() {
   const tax = subtotal * 0.08
   const total = subtotal + shipping + tax
 
+  const saveAddressAsDefault = async () => {
+    if (!isAuthenticated || defaultAddress || !saveAsDefault) return
+
+    try {
+      const addressData = {
+        full_name: `${shippingAddress.firstName} ${shippingAddress.lastName}`,
+        address_line_1: shippingAddress.address1,
+        address_line_2: shippingAddress.address2,
+        city: shippingAddress.city,
+        state: shippingAddress.state,
+        zip_code: shippingAddress.zipCode,
+        country: shippingAddress.country,
+        phone: shippingAddress.phone,
+        is_default: true
+      }
+
+      const savedAddress = await addressService.createAddress(addressData)
+      setDefaultAddress(savedAddress)
+      setSelectedAddressId(savedAddress.id)
+      
+      addToast('Address saved as default', 'success')
+    } catch (error) {
+      console.error('Failed to save address:', error)
+      addToast('Failed to save address', 'error')
+    }
+  }
+
   const handleShippingSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setCurrentStep(2)
+    // Form validation can be added here if needed
   }
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Pre-checkout inventory validation
+    if (inventoryIssues.length > 0) {
+      addToast('Please resolve inventory issues in your cart before proceeding', 'error')
+      return
+    }
+    
     setIsProcessing(true)
     
     try {
@@ -163,9 +215,32 @@ export default function CheckoutPage() {
           } 
         })
       } else {
-        // Authenticated user flow - backend will use their default address
-        const orderData = {
+        // Authenticated user flow
+        let orderData: any = {
           payment_method: 'card'
+        }
+
+        // If user doesn't have a default address, handle the shipping address
+        if (!defaultAddress) {
+          // Save as default if user chose to
+          if (saveAsDefault) {
+            await saveAddressAsDefault()
+          }
+          
+          // Convert shipping address format for order
+          const addressForOrder = {
+            full_name: `${shippingAddress.firstName} ${shippingAddress.lastName}`,
+            address_line_1: shippingAddress.address1,
+            address_line_2: shippingAddress.address2,
+            city: shippingAddress.city,
+            state: shippingAddress.state,
+            zip_code: shippingAddress.zipCode,
+            country: shippingAddress.country,
+            phone: shippingAddress.phone
+          }
+          
+          orderData.shipping_address = addressForOrder
+          orderData.billing_address = addressForOrder
         }
 
         const orders = await orderService.createOrder(orderData)
@@ -180,7 +255,15 @@ export default function CheckoutPage() {
       }
     } catch (error) {
       console.error('Order creation failed:', error)
-      addToast(error instanceof Error ? error.message : 'Failed to create order. Please try again.', 'error')
+      
+      // Enhanced error handling for inventory issues
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create order. Please try again.'
+      
+      if (errorMessage.toLowerCase().includes('stock') || errorMessage.toLowerCase().includes('inventory')) {
+        addToast('Some items in your cart are no longer available. Please review your cart and try again.', 'error')
+      } else {
+        addToast(errorMessage, 'error')
+      }
     } finally {
       setIsProcessing(false)
     }
@@ -234,6 +317,53 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2">
+            {/* Inventory Issues Warning */}
+            {inventoryIssues.length > 0 && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
+                <div className="flex items-start space-x-3">
+                  <svg className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-red-800 mb-2">
+                      {inventoryIssues.length === 1 ? 'Inventory Issue' : 'Inventory Issues'}
+                    </h3>
+                    <p className="text-sm text-red-700 mb-3">
+                      The following items have inventory issues and must be resolved before checkout:
+                    </p>
+                    <div className="space-y-2">
+                      {inventoryIssues.map(item => (
+                        <div key={item.id} className="flex items-center justify-between bg-white rounded p-3 border border-red-200">
+                          <div className="flex items-center space-x-3">
+                            <img 
+                              src={getImageSrc(item.product.images?.[0])} 
+                              alt={item.product.name}
+                              className="w-8 h-8 rounded object-cover"
+                            />
+                            <div>
+                              <p className="font-medium text-red-900 text-sm">{item.product.name}</p>
+                              <p className="text-xs text-red-600">
+                                {item.product.out_of_stock 
+                                  ? 'Out of stock'
+                                  : `Requested: ${item.quantity}, Available: ${item.product.total_inventory}`
+                                }
+                              </p>
+                            </div>
+                          </div>
+                          <Link
+                            to="/cart"
+                            className="bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded text-xs font-medium transition-colors"
+                          >
+                            Fix in Cart
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Contact, Shipping & Payment Information */}
             <div className="space-y-6">
                 {/* Authenticated User Address Display (Amazon Style) */}
@@ -390,8 +520,8 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                {/* Shipping Information - Only show for guest checkout */}
-                {isGuestCheckout && (
+                {/* Shipping Information - Show for guest checkout or authenticated users without default address */}
+                {(isGuestCheckout || (isAuthenticated && !defaultAddress)) && (
                   <div className="bg-white rounded-lg shadow-card p-6">
                     <h2 className="text-lg font-semibold text-charcoal-900 mb-6">Shipping Address</h2>
                     
@@ -501,6 +631,27 @@ export default function CheckoutPage() {
                         />
                       </div>
                     </div>
+                    
+                    {/* Save as default address option for authenticated users */}
+                    {isAuthenticated && !isGuestCheckout && (
+                      <div className="pt-4 border-t border-sand-200">
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id="saveAsDefault"
+                            checked={saveAsDefault}
+                            onChange={(e) => setSaveAsDefault(e.target.checked)}
+                            className="h-4 w-4 text-forest-600 focus:ring-forest-500 border-charcoal-300 rounded"
+                          />
+                          <label htmlFor="saveAsDefault" className="ml-2 block text-sm text-charcoal-600">
+                            Save this address as my default shipping address
+                          </label>
+                        </div>
+                        <p className="text-xs text-charcoal-500 mt-1">
+                          This will be used for future orders to make checkout faster
+                        </p>
+                      </div>
+                    )}
                     
                     </div>
                   </div>
@@ -639,13 +790,20 @@ export default function CheckoutPage() {
                   <div className="flex justify-end pt-6">
                     <button
                       type="submit"
-                      disabled={isProcessing}
+                      disabled={isProcessing || inventoryIssues.length > 0}
                       className="bg-forest-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-forest-700 disabled:bg-charcoal-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2 text-lg"
                     >
                       {isProcessing ? (
                         <>
                           <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-b-transparent"></div>
                           <span>Processing Order...</span>
+                        </>
+                      ) : inventoryIssues.length > 0 ? (
+                        <>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                          <span>Resolve Inventory Issues</span>
                         </>
                       ) : (
                         <>

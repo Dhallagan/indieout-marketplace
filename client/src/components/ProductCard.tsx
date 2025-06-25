@@ -139,9 +139,16 @@ export default function ProductCard({ product, showStore = true, size = 'medium'
               </span>
             )}
             
-            {product.track_inventory && product.total_inventory <= product.low_stock_threshold && (
-              <span className="text-xs text-clay-700 bg-clay-100 px-2 py-1 rounded-full mt-2 inline-block">
-                {product.total_inventory > 0 ? `Only ${product.total_inventory} left!` : 'Out of stock'}
+            {product.track_inventory && product.stock_status !== 'in_stock' && (
+              <span className={`text-xs px-2 py-1 rounded-full mt-2 inline-block font-medium ${
+                product.stock_status === 'out_of_stock' 
+                  ? 'text-red-700 bg-red-100'
+                  : 'text-amber-700 bg-amber-100'
+              }`}>
+                {product.stock_status === 'out_of_stock' 
+                  ? 'Out of stock'
+                  : `Only ${product.total_inventory} left!`
+                }
               </span>
             )}
           </div>
@@ -149,7 +156,7 @@ export default function ProductCard({ product, showStore = true, size = 'medium'
           {/* Quick Add Button */}
           <button 
             onClick={handleQuickAdd}
-            disabled={isAdding || Number(product.inventory) === 0}
+            disabled={isAdding || product.out_of_stock}
             className="bg-forest-600 hover:bg-forest-700 disabled:bg-charcoal-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-semibold text-sm transition-all opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 duration-300 flex items-center space-x-1"
           >
             {isAdding ? (
@@ -157,7 +164,7 @@ export default function ProductCard({ product, showStore = true, size = 'medium'
                 <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-b-transparent"></div>
                 <span>Adding...</span>
               </>
-            ) : Number(product.inventory) === 0 ? (
+            ) : product.out_of_stock ? (
               <span>Out of Stock</span>
             ) : isInCart(product.id) ? (
               <>

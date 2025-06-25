@@ -37,9 +37,9 @@ export default function ProductDetailPage() {
       if (productData.category_id) {
         setIsLoadingRelated(true)
         try {
-          const relatedData = await getProducts({ category_id: productData.category_id })
+          const relatedResult = await getProducts({ category_id: productData.category_id })
           // Filter out current product and limit to 4 related products
-          const filtered = relatedData
+          const filtered = relatedResult.products
             .filter(p => p.id !== productData.id)
             .slice(0, 4)
           setRelatedProducts(filtered)
@@ -286,7 +286,8 @@ export default function ProductDetailPage() {
                   <div className="flex items-center border border-charcoal-300 rounded-lg">
                     <button
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="p-2 hover:bg-sand-50 transition-colors rounded-l-lg"
+                      disabled={product.out_of_stock}
+                      className="p-2 hover:bg-sand-50 disabled:opacity-50 transition-colors rounded-l-lg"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
@@ -296,13 +297,15 @@ export default function ProductDetailPage() {
                       type="number"
                       value={quantity}
                       onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-16 px-3 py-2 text-center border-none focus:outline-none"
+                      disabled={product.out_of_stock}
+                      className="w-16 px-3 py-2 text-center border-none focus:outline-none disabled:opacity-50"
                       min="1"
-                      max={Number(product.inventory)}
+                      max={product.total_inventory}
                     />
                     <button
-                      onClick={() => setQuantity(Math.min(Number(product.inventory), quantity + 1))}
-                      className="p-2 hover:bg-sand-50 transition-colors rounded-r-lg"
+                      onClick={() => setQuantity(Math.min(product.total_inventory, quantity + 1))}
+                      disabled={product.out_of_stock}
+                      className="p-2 hover:bg-sand-50 disabled:opacity-50 transition-colors rounded-r-lg"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -314,22 +317,26 @@ export default function ProductDetailPage() {
                 {/* Stock Status */}
                 {product.track_inventory && (
                   <div className="flex-1">
-                    {Number(product.inventory) <= Number(product.low_stock_threshold) ? (
-                      <div className="flex items-center text-sm text-clay-600">
+                    {product.stock_status === 'out_of_stock' ? (
+                      <div className="flex items-center text-sm text-red-600">
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Out of stock
+                      </div>
+                    ) : product.stock_status === 'low_stock' ? (
+                      <div className="flex items-center text-sm text-amber-600">
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 15.5c-.77.833.192 2.5 1.732 2.5z" />
                         </svg>
-                        {Number(product.inventory) > 0 
-                          ? `Only ${product.inventory} left in stock` 
-                          : 'Out of stock'
-                        }
+                        Only {product.total_inventory} left in stock
                       </div>
                     ) : (
                       <div className="flex items-center text-sm text-forest-600">
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        In stock
+                        In stock ({product.total_inventory} available)
                       </div>
                     )}
                   </div>
@@ -339,7 +346,7 @@ export default function ProductDetailPage() {
               <div className="flex space-x-3">
                 <button
                   onClick={handleAddToCart}
-                  disabled={!Number(product.inventory) || isAddingToCart}
+                  disabled={product.out_of_stock || isAddingToCart}
                   className="flex-1 bg-forest-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-forest-700 disabled:bg-charcoal-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
                 >
                   {isAddingToCart ? (
@@ -353,11 +360,11 @@ export default function ProductDetailPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M7 13l-1.5 6m6.5-6h3" />
                       </svg>
                       <span>
-                        {Number(product.inventory) 
-                          ? isInCart(product.id) 
+                        {product.out_of_stock
+                          ? 'Out of Stock'
+                          : isInCart(product.id) 
                             ? 'Add More' 
-                            : 'Add to Cart' 
-                          : 'Out of Stock'
+                            : 'Add to Cart'
                         }
                       </span>
                     </>

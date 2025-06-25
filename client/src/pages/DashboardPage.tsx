@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { UserRole } from '@/types/auth'
-import { Link } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import AdminLayout from '@/components/admin/AdminLayout'
+import SellerLayout from '@/components/seller/SellerLayout'
 import Page from '@/components/admin/Page'
 import Card from '@/components/admin/Card'
 import Button from '@/components/admin/Button'
@@ -11,9 +12,11 @@ import { addressService } from '@/services/addressService'
 import { orderService } from '@/services/orderService'
 import { Address, CreateAddressRequest } from '@/types/api-generated'
 import { useToast } from '@/contexts/ToastContext'
+import { profileService } from '@/services/profileService'
 
 export default function DashboardPage() {
   const { user, hasRole } = useAuth()
+  const [searchParams] = useSearchParams()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
 
@@ -35,19 +38,15 @@ export default function DashboardPage() {
     }
   }
 
-  // If user is admin, show admin layout
-  if (hasRole(UserRole.SYSTEM_ADMIN) || hasRole(UserRole.SELLER_ADMIN)) {
+  // System Admin Dashboard
+  if (hasRole(UserRole.SYSTEM_ADMIN)) {
     return (
       <AdminLayout>
         <Page
           title={`Welcome back, ${user?.first_name}!`}
-          subtitle={
-            hasRole(UserRole.SYSTEM_ADMIN) 
-              ? 'System Administrator Dashboard' 
-              : 'Seller Dashboard'
-          }
+          subtitle="System Administrator Dashboard"
         >
-          {hasRole(UserRole.SYSTEM_ADMIN) && (
+          {/* Admin content */}
             <div className="space-y-8">
               {/* Stats Overview */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -207,85 +206,14 @@ export default function DashboardPage() {
                 </Card>
               </div>
             </div>
-          )}
-
-          {hasRole(UserRole.SELLER_ADMIN) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {user?.store ? (
-                <>
-                  <Card title="My Store" sectioned>
-                    <div className="space-y-3">
-                      <p className="font-medium">{user.store.name}</p>
-                      <div className="flex space-x-2">
-                        {user.store.is_verified ? (
-                          <span className="px-2 py-1 text-xs bg-forest-100 text-forest-800 rounded">
-                            Verified
-                          </span>
-                        ) : (
-                          <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded">
-                            Pending Verification
-                          </span>
-                        )}
-                        {user.store.is_active ? (
-                          <span className="px-2 py-1 text-xs bg-forest-100 text-forest-800 rounded">
-                            Active
-                          </span>
-                        ) : (
-                          <span className="px-2 py-1 text-xs bg-sand-100 text-charcoal-800 rounded">
-                            Inactive
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </Card>
-                  
-                  <Card
-                    title="Manage Products"
-                    actions={
-                      <Link to="/seller/products">
-                        <Button variant="primary" size="small">
-                          Manage
-                        </Button>
-                      </Link>
-                    }
-                    sectioned
-                  >
-                    <p className="text-charcoal-600">Add and edit your product listings</p>
-                  </Card>
-                  
-                  <Card
-                    title="Orders"
-                    actions={
-                      <Button variant="primary" size="small">
-                        View
-                      </Button>
-                    }
-                    sectioned
-                  >
-                    <p className="text-charcoal-600">Process and fulfill customer orders</p>
-                  </Card>
-                </>
-              ) : (
-                <div className="col-span-full">
-                  <Card title="Set Up Your Store" sectioned>
-                    <div className="text-center py-8">
-                      <p className="text-charcoal-600 mb-6">
-                        Create your store to start selling your outdoor products
-                      </p>
-                      <Link to="/store/setup">
-                        <Button variant="primary" size="large">
-                          Create Store
-                        </Button>
-                      </Link>
-                    </div>
-                  </Card>
-                </div>
-              )}
-            </div>
-          )}
         </Page>
       </AdminLayout>
     )
+  }
+
+  // Redirect sellers to their dedicated dashboard ONLY if they're not accessing customer functions
+  if (hasRole(UserRole.SELLER_ADMIN) && !searchParams.get('tab')) {
+    return <Navigate to="/seller/dashboard" replace />
   }
 
   // Customer dashboard with Etsy-style layout
@@ -293,7 +221,9 @@ export default function DashboardPage() {
 }
 
 function CustomerDashboard({ user }: { user: any }) {
-  const [activeTab, setActiveTab] = useState('purchases')
+  const [searchParams] = useSearchParams()
+  const tabFromUrl = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState(tabFromUrl || 'account')
 
   const tabs = [
     { id: 'purchases', label: 'Orders', href: '/dashboard/purchases' },
@@ -318,7 +248,7 @@ function CustomerDashboard({ user }: { user: any }) {
               </Link>
               <div>
                 <h1 className="text-2xl font-bold text-charcoal-900">Your Account</h1>
-                <p className="text-sm text-charcoal-600">Welcome back, {user?.firstName}!</p>
+                <p className="text-sm text-charcoal-600">Welcome back, {user?.first_name}!</p>
               </div>
             </div>
             <Link 
@@ -360,66 +290,128 @@ function CustomerDashboard({ user }: { user: any }) {
 }
 
 function AccountTab({ user }: { user: any }) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [firstName, setFirstName] = useState(user?.first_name || '')
+  const [lastName, setLastName] = useState(user?.last_name || '')
+  const [email, setEmail] = useState(user?.email || '')
+  const [isUpdating, setIsUpdating] = useState(false)
+  const { addToast } = useToast()
+
+  const handleSaveProfile = async () => {
+    setIsUpdating(true)
+    try {
+      const updatedUser = await profileService.updateProfile({
+        first_name: firstName,
+        last_name: lastName,
+        email: email
+      })
+      
+      addToast('Profile updated successfully!', 'success')
+      setIsEditing(false)
+      
+      // TODO: Update the user context with new data
+      console.log('Profile updated:', updatedUser)
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Failed to update profile', 'error')
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
   return (
     <div className="space-y-8">
-      {/* About You */}
+      {/* Profile Information */}
       <div className="bg-white rounded-lg border border-sand-200 p-6">
-        <h2 className="text-lg font-semibold text-charcoal-900 mb-6">About You</h2>
-        
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-charcoal-700 mb-1">Name</label>
-            <p className="text-charcoal-600">{user?.firstName} {user?.lastName}</p>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-charcoal-700 mb-1">Member since</label>
-            <p className="text-charcoal-600">
-              {new Date(user?.created_at || Date.now()).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })}
-            </p>
-          </div>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold text-charcoal-900">Profile Information</h2>
+          {!isEditing && (
+            <button 
+              onClick={() => setIsEditing(true)}
+              className="px-4 py-2 border border-charcoal-300 rounded-lg text-sm font-medium text-charcoal-700 hover:bg-sand-50 transition-colors"
+            >
+              Edit Profile
+            </button>
+          )}
         </div>
         
-        <button className="mt-6 px-4 py-2 border border-charcoal-300 rounded-lg text-sm font-medium text-charcoal-700 hover:bg-sand-50 transition-colors">
-          Edit public profile
-        </button>
-      </div>
+        {isEditing ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-charcoal-700 mb-1">First Name</label>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-charcoal-700 mb-1">Last Name</label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-charcoal-700 mb-1">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
+              />
+            </div>
 
-      {/* Location Settings */}
-      <div className="bg-white rounded-lg border border-sand-200 p-6">
-        <h2 className="text-lg font-semibold text-charcoal-900 mb-2">Location Settings</h2>
-        <p className="text-charcoal-600 mb-6">Set where you live, what language you speak, and the currency you use.</p>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-charcoal-700 mb-2">Region</label>
-            <select className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400">
-              <option>United States</option>
-            </select>
+            <div className="flex items-center space-x-3 pt-4">
+              <button
+                onClick={handleSaveProfile}
+                disabled={isUpdating}
+                className="bg-forest-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-forest-700 disabled:opacity-50 transition-colors"
+              >
+                {isUpdating ? 'Saving...' : 'Save Changes'}
+              </button>
+              <button
+                onClick={() => {
+                  setIsEditing(false)
+                  setFirstName(user?.first_name || '')
+                  setLastName(user?.last_name || '')
+                  setEmail(user?.email || '')
+                }}
+                className="px-6 py-2 border border-charcoal-300 rounded-lg text-sm font-medium text-charcoal-700 hover:bg-sand-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-charcoal-700 mb-2">Language</label>
-            <select className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400">
-              <option>English (US)</option>
-            </select>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-charcoal-700 mb-1">Name</label>
+              <p className="text-charcoal-600">{user?.first_name} {user?.last_name}</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-charcoal-700 mb-1">Email</label>
+              <p className="text-charcoal-600">{user?.email}</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-charcoal-700 mb-1">Member since</label>
+              <p className="text-charcoal-600">
+                {new Date(user?.created_at || Date.now()).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </p>
+            </div>
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-charcoal-700 mb-2">Currency</label>
-            <select className="w-full px-3 py-2 border border-charcoal-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400">
-              <option>$ United States Dollar (USD)</option>
-            </select>
-          </div>
-        </div>
-        
-        <button className="mt-6 bg-charcoal-900 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-charcoal-800 transition-colors">
-          Save Settings
-        </button>
+        )}
       </div>
 
       {/* Seller CTA with IndieOut branding */}

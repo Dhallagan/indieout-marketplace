@@ -4,23 +4,54 @@
 
 puts "🌱 Seeding database..."
 
-# Helper method for generating realistic outdoor images
-def outdoor_image_url(category = nil, seed = nil)
-  # Using placeholder.pics for reliable placeholder images
-  seed_num = seed || rand(1000)
-  base_url = "https://picsum.photos/400/400"
+# Helper method for generating AI product images
+def generate_ai_product_image(product_name, description, category, style_seed = nil)
+  # Try to generate AI image first, fallback to curated images
+  if ENV['OPENAI_API_KEY'].present?
+    puts "🎨 Generating AI image for: #{product_name}"
+    ai_image = AiImageService.generate_product_image(product_name, description, category)
+    return ai_image if ai_image.present?
+  end
   
+  # Fallback to curated Unsplash images
+  puts "📷 Using curated image for: #{product_name}"
   case category
   when 'hiking'
-    "#{base_url}?random=#{seed_num + 1000}"
+    hiking_images = [
+      "https://images.unsplash.com/photo-1544966503-7cc5ac882d5c?w=400&h=400&fit=crop", # backpack
+      "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=400&h=400&fit=crop", # hiking boots
+      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop", # trekking poles
+      "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&h=400&fit=crop", # outdoor gear
+      "https://images.unsplash.com/photo-1506197603052-3cc9c3a201bd?w=400&h=400&fit=crop"  # hiking equipment
+    ]
+    hiking_images[(style_seed || rand(hiking_images.length)) % hiking_images.length]
   when 'climbing'
-    "#{base_url}?random=#{seed_num + 2000}"
+    climbing_images = [
+      "https://images.unsplash.com/photo-1522163182402-834f871fd851?w=400&h=400&fit=crop", # climbing rope
+      "https://images.unsplash.com/photo-1564760055775-d63b17a55c44?w=400&h=400&fit=crop", # climbing gear
+      "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop", # carabiners
+      "https://images.unsplash.com/photo-1551524164-6cf2ac632fb4?w=400&h=400&fit=crop", # harness
+      "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=400&fit=crop"  # ice axe
+    ]
+    climbing_images[(style_seed || rand(climbing_images.length)) % climbing_images.length]
   when 'camping'
-    "#{base_url}?random=#{seed_num + 3000}"
+    camping_images = [
+      "https://images.unsplash.com/photo-1504851149312-7a075b496cc7?w=400&h=400&fit=crop", # tent
+      "https://images.unsplash.com/photo-1487730116645-74489c95b41b?w=400&h=400&fit=crop", # sleeping bag
+      "https://images.unsplash.com/photo-1532339142463-fd0a8979791a?w=400&h=400&fit=crop", # camping cookware
+      "https://images.unsplash.com/photo-1517824806704-9040b037703b?w=400&h=400&fit=crop", # camp stove
+      "https://images.unsplash.com/photo-1434725039720-aaad6dd32dfe?w=400&h=400&fit=crop"  # camping gear
+    ]
+    camping_images[(style_seed || rand(camping_images.length)) % camping_images.length]
   when 'store'
-    "https://picsum.photos/200/200?random=#{seed_num + 4000}"
+    store_images = [
+      "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=200&h=200&fit=crop", # outdoor store
+      "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=200&h=200&fit=crop", # mountain logo
+      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&h=200&fit=crop"  # gear shop
+    ]
+    store_images[(style_seed || rand(store_images.length)) % store_images.length]
   else
-    "#{base_url}?random=#{seed_num + 5000}"
+    "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop"
   end
 end
 
@@ -222,7 +253,7 @@ stores_data.each_with_index do |store_data, index|
     s.is_verified = true
     s.is_active = true
     s.commission_rate = 0.05
-    s.logo = outdoor_image_url('store', index + 100)
+    s.logo = generate_ai_product_image(store_data[:name], store_data[:description], 'store', index + 100)
   end
   
   stores << { store: store, specialty: store_data[:specialty] }
@@ -482,11 +513,38 @@ products_data.each_with_index do |product_data, index|
     p.materials = product_data[:materials]
     p.status = :active
     p.is_featured = product_data[:is_featured] || false
-    p.images = [
-      outdoor_image_url(product_data[:specialty], index + 1),
-      outdoor_image_url(product_data[:specialty], index + 50),
-      outdoor_image_url(product_data[:specialty], index + 100)
-    ]
+# Images will be created as ProductImage records after product creation
+  end
+  
+  # Create ProductImage records
+  image_urls = [
+    generate_ai_product_image(product_data[:name], product_data[:description], product_data[:specialty], index),
+    generate_ai_product_image(product_data[:name], product_data[:description], product_data[:specialty], index + 50),
+    generate_ai_product_image(product_data[:name], product_data[:description], product_data[:specialty], index + 100)
+  ]
+  
+  image_urls.each_with_index do |image_url, img_index|
+    # Extract file ID from URL
+    file_id = if image_url.include?('/uploads/store/')
+      image_url.split('/uploads/store/').last
+    elsif image_url.include?('/uploads/')
+      image_url.split('/uploads/').last
+    else
+      image_url
+    end
+    
+    ProductImage.create!(
+      id: SecureRandom.uuid,
+      product_id: product.id,
+      position: img_index + 1,
+      image_data: {
+        'id' => file_id,
+        'storage' => 'store',
+        'metadata' => {
+          'filename' => file_id.split('/').last
+        }
+      }.to_json
+    )
   end
   
   puts "📦 Created product: #{product.name} (#{store.name})"
