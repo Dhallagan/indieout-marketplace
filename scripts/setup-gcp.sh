@@ -95,24 +95,35 @@ POOL_NAME="github-pool"
 PROVIDER_NAME="github-provider"
 
 # Create workload identity pool
-gcloud iam workload-identity-pools create $POOL_NAME \
-    --location="global" \
-    --display-name="GitHub Actions Pool" \
-    --quiet || true
+if ! gcloud iam workload-identity-pools describe $POOL_NAME --location="global" &> /dev/null; then
+    echo "  - Creating workload identity pool..."
+    gcloud iam workload-identity-pools create $POOL_NAME \
+        --location="global" \
+        --display-name="GitHub Actions Pool" \
+        --quiet
+else
+    echo "  ✓ Workload identity pool already exists"
+fi
 
 # Create workload identity provider
-echo "  - Creating identity provider..."
 read -p "Enter your GitHub username/organization: " GITHUB_ORG
 read -p "Enter your GitHub repository name: " GITHUB_REPO
 
-gcloud iam workload-identity-pools providers create-oidc $PROVIDER_NAME \
+if ! gcloud iam workload-identity-pools providers describe $PROVIDER_NAME \
     --location="global" \
-    --workload-identity-pool=$POOL_NAME \
-    --display-name="GitHub Provider" \
-    --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository" \
-    --issuer-uri="https://token.actions.githubusercontent.com" \
-    --attribute-condition="assertion.repository=='$GITHUB_ORG/$GITHUB_REPO'" \
-    --quiet || true
+    --workload-identity-pool=$POOL_NAME &> /dev/null; then
+    echo "  - Creating identity provider..."
+    gcloud iam workload-identity-pools providers create-oidc $PROVIDER_NAME \
+        --location="global" \
+        --workload-identity-pool=$POOL_NAME \
+        --display-name="GitHub Provider" \
+        --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository" \
+        --issuer-uri="https://token.actions.githubusercontent.com" \
+        --attribute-condition="assertion.repository=='$GITHUB_ORG/$GITHUB_REPO'" \
+        --quiet
+else
+    echo "  ✓ Identity provider already exists"
+fi
 
 # Get Workload Identity Provider resource name
 WIP=$(gcloud iam workload-identity-pools providers describe $PROVIDER_NAME \
@@ -121,9 +132,16 @@ WIP=$(gcloud iam workload-identity-pools providers describe $PROVIDER_NAME \
     --format="value(name)")
 
 # Bind service account to workload identity
+# Get project number
+PROJECT_NUMBER=$(gcloud projects describe $GCP_PROJECT_ID --format="value(projectNumber)")
+
+# Construct the correct principal member format
+PRINCIPAL="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/$POOL_NAME/attribute.repository/$GITHUB_ORG/$GITHUB_REPO"
+
+echo "  - Binding service account to workload identity..."
 gcloud iam service-accounts add-iam-policy-binding $SA_EMAIL \
     --role="roles/iam.workloadIdentityUser" \
-    --member="principalSet://iam.googleapis.com/$WIP/attribute.repository/$GITHUB_ORG/$GITHUB_REPO" \
+    --member="$PRINCIPAL" \
     --quiet
 
 # Create Artifact Registry repository

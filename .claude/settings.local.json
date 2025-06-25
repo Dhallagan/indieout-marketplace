@@ -8,7 +8,8 @@
       "Bash(rails:*)",
       "Bash(rg:*)",
       "Bash(npm run generate:types:*)",
-      "Bash(touch:*)"
+      "Bash(touch:*)",
+      "Bash(chmod:*)"
     ],
     "deny": []
   }
