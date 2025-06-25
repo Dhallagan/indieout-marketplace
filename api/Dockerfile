@@ -28,12 +28,15 @@ COPY . .
 RUN mkdir -p tmp/pids tmp/sockets log storage public/uploads && \
     chmod -R 755 public
 
-# Expose port
-EXPOSE 3000
+# Precompile assets (even though API-only, some gems might need this)
+RUN RAILS_ENV=production bundle exec rails assets:precompile || true
+
+# Expose port (Cloud Run uses PORT env var, defaults to 8080)
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:3000/health || exit 1
+  CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
-# Start Rails server
-CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]
+# Start Rails server binding to all interfaces
+CMD bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:${PORT:-8080}
