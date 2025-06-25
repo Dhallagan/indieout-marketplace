@@ -121,11 +121,6 @@ jobs:
           docker build -t $IMAGE_TAG .
           docker push $IMAGE_TAG
       
-      - name: Create Cloud SQL connection secret
-        run: |
-          echo "${{ secrets.CLOUD_SQL_CONNECTION }}" | gcloud secrets create cloud-sql-connection --data-file=- || \
-          echo "${{ secrets.CLOUD_SQL_CONNECTION }}" | gcloud secrets versions add cloud-sql-connection --data-file=-
-      
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy indieout-api \
@@ -133,7 +128,6 @@ jobs:
             --region ${{ env.GAR_LOCATION }} \
             --platform managed \
             --allow-unauthenticated \
-            --add-cloudsql-instances ${{ secrets.CLOUD_SQL_CONNECTION }} \
             --service-account ${{ env.SERVICE_ACCOUNT }} \
             --set-env-vars "RAILS_ENV=production" \
             --set-env-vars "RAILS_LOG_TO_STDOUT=true" \
@@ -150,21 +144,7 @@ jobs:
             --cpu 1 \
             --timeout 60
       
-      - name: Run database migrations
-        run: |
-          gcloud run jobs create migrate-db \
-            --image ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/api:${{ github.sha }} \
-            --region ${{ env.GAR_LOCATION }} \
-            --add-cloudsql-instances ${{ secrets.CLOUD_SQL_CONNECTION }} \
-            --service-account ${{ env.SERVICE_ACCOUNT }} \
-            --set-env-vars "RAILS_ENV=production" \
-            --set-secrets "DATABASE_URL=database-url:latest" \
-            --set-secrets "RAILS_MASTER_KEY=rails-master-key:latest" \
-            --command "bundle,exec,rails,db:migrate" \
-            --max-retries 3 \
-            --timeout 600 || true
-          
-          gcloud run jobs execute migrate-db --region ${{ env.GAR_LOCATION }} --wait
+      # Database migrations will be added when Cloud SQL is configured
 
   deploy-frontend:
     needs: test
