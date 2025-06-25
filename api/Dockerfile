@@ -1,59 +1,62 @@
-# syntax = docker/dockerfile:1
+# Rails API Dockerfile
+FROM ruby:3.2.2-alpine AS base
 
-# Make sure RUBY_VERSION matches the Ruby version in .ruby-version and Gemfile
-ARG RUBY_VERSION=3.2.6
-FROM registry.docker.com/library/ruby:$RUBY_VERSION-slim as base
+# Install runtime dependencies
+RUN apk add --no-cache \
+    postgresql-client \
+    tzdata \
+    gcompat \
+    libpq
 
-# Rails app lives here
-WORKDIR /rails
+# Set working directory
+WORKDIR /app
 
-# Set production environment
-ENV RAILS_ENV="production" \
-    BUNDLE_DEPLOYMENT="1" \
-    BUNDLE_PATH="/usr/local/bundle" \
-    BUNDLE_WITHOUT="development"
+# Install build dependencies
+FROM base AS builder
 
+RUN apk add --no-cache \
+    build-base \
+    postgresql-dev \
+    git
 
-# Throw-away build stage to reduce size of final image
-FROM base as build
-
-# Install packages needed to build gems
-RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y build-essential git libpq-dev libvips pkg-config
-
-# Install application gems
+# Copy Gemfiles
 COPY Gemfile Gemfile.lock ./
-RUN bundle install && \
-    rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
-    bundle exec bootsnap precompile --gemfile
+
+# Install gems
+RUN bundle config set --local deployment 'true' && \
+    bundle config set --local without 'development test' && \
+    bundle install --jobs 4 --retry 3 && \
+    rm -rf /usr/local/bundle/cache/*.gem && \
+    find /usr/local/bundle/gems/ -name "*.c" -delete && \
+    find /usr/local/bundle/gems/ -name "*.o" -delete
+
+# Final stage
+FROM base
+
+# Copy installed gems from builder
+COPY --from=builder /usr/local/bundle /usr/local/bundle
 
 # Copy application code
 COPY . .
 
-# Precompile bootsnap code for faster boot times
-RUN bundle exec bootsnap precompile app/ lib/
+# Create necessary directories
+RUN mkdir -p tmp/pids tmp/sockets log storage public/uploads && \
+    chmod -R 755 public
 
+# Add non-root user
+RUN addgroup -g 1000 -S rails && \
+    adduser -u 1000 -S rails -G rails && \
+    chown -R rails:rails /app
 
-# Final stage for app image
-FROM base
+# Switch to non-root user
+USER rails
 
-# Install packages needed for deployment
-RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y curl libvips postgresql-client && \
-    rm -rf /var/lib/apt/lists /var/cache/apt/archives
-
-# Copy built artifacts: gems, application
-COPY --from=build /usr/local/bundle /usr/local/bundle
-COPY --from=build /rails /rails
-
-# Run and own only the runtime files as a non-root user for security
-RUN useradd rails --create-home --shell /bin/bash && \
-    chown -R rails:rails db log storage tmp
-USER rails:rails
-
-# Entrypoint prepares the database.
-ENTRYPOINT ["/rails/bin/docker-entrypoint"]
-
-# Start the server by default, this can be overwritten at runtime
+# Expose port
 EXPOSE 3000
-CMD ["./bin/rails", "server"]
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
+# Start Rails server
+CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]
