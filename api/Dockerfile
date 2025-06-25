@@ -1,12 +1,13 @@
 # Rails API Dockerfile
-FROM ruby:3.2.6-alpine AS base
+FROM ruby:3.2.6-alpine
 
-# Install runtime dependencies
+# Install dependencies
 RUN apk add --no-cache \
+    build-base \
     postgresql-client \
+    postgresql-dev \
     tzdata \
-    gcompat \
-    libpq \
+    git \
     vips \
     vips-dev \
     curl
@@ -14,46 +15,18 @@ RUN apk add --no-cache \
 # Set working directory
 WORKDIR /app
 
-# Install build dependencies
-FROM base AS builder
-
-RUN apk add --no-cache \
-    build-base \
-    postgresql-dev \
-    git \
-    vips-dev
-
 # Copy Gemfiles
 COPY Gemfile Gemfile.lock ./
 
 # Install gems
-RUN bundle config set --local deployment 'true' && \
-    bundle config set --local without 'development test' && \
-    bundle install --jobs 4 --retry 3 && \
-    rm -rf /usr/local/bundle/cache/*.gem && \
-    find /usr/local/bundle/gems/ -name "*.c" -delete && \
-    find /usr/local/bundle/gems/ -name "*.o" -delete
-
-# Final stage
-FROM base
-
-# Copy installed gems from builder
-COPY --from=builder /usr/local/bundle /usr/local/bundle
+RUN bundle install --jobs 4 --retry 3
 
 # Copy application code
 COPY . .
 
-# Create necessary directories
+# Create necessary directories and set permissions
 RUN mkdir -p tmp/pids tmp/sockets log storage public/uploads && \
     chmod -R 755 public
-
-# Add non-root user
-RUN addgroup -g 1000 -S rails && \
-    adduser -u 1000 -S rails -G rails && \
-    chown -R rails:rails /app
-
-# Switch to non-root user
-USER rails
 
 # Expose port
 EXPOSE 3000
