@@ -1,31 +1,61 @@
-# See https://docs.docker.com/engine/reference/builder/#dockerignore-file for more about ignoring files.
+# Ignore version control
+.git
+.gitignore
 
-# Ignore git directory.
-/.git/
-
-# Ignore bundler config.
+# Ignore bundler config
 /.bundle
 
-# Ignore all environment files (except templates).
-/.env*
-!/.env*.erb
+# Ignore all default SQLite databases
+/db/*.sqlite3
+/db/*.sqlite3-*
 
-# Ignore all default key files.
-/config/master.key
-/config/credentials/*.key
-
-# Ignore all logfiles and tempfiles.
+# Ignore all logfiles and tempfiles
 /log/*
 /tmp/*
 !/log/.keep
 !/tmp/.keep
 
-# Ignore pidfiles, but keep the directory.
+# Ignore pidfiles, but keep the directory
 /tmp/pids/*
+!/tmp/pids/
 !/tmp/pids/.keep
 
-# Ignore storage (uploaded files in development and any SQLite databases).
+# Ignore storage (uploaded files in development)
 /storage/*
 !/storage/.keep
-/tmp/storage/*
-!/tmp/storage/.keep
+
+# Ignore master key for decrypting credentials
+/config/master.key
+
+# Ignore test files
+/spec
+/test
+.rspec
+
+# Ignore development files
+.env
+.env.local
+.env.*.local
+
+# Ignore node modules if any
+/node_modules
+
+# Ignore yarn files
+yarn-error.log
+.yarn-integrity
+
+# Ignore Mac files
+.DS_Store
+
+# Ignore editor files
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Ignore coverage reports
+/coverage
+
+# Ignore fly.toml when building
+fly.toml

@@ -7,7 +7,8 @@
       "Bash(curl:*)",
       "Bash(rails:*)",
       "Bash(rg:*)",
-      "Bash(npm run generate:types:*)"
+      "Bash(npm run generate:types:*)",
+      "Bash(touch:*)"
     ],
     "deny": []
   }
