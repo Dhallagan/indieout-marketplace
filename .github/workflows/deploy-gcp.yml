@@ -134,7 +134,6 @@ jobs:
             --set-env-vars "RAILS_LOG_TO_STDOUT=true" \
             --set-env-vars "RAILS_SERVE_STATIC_FILES=true" \
             --set-env-vars "FRONTEND_URL=https://storage.googleapis.com/indieout-frontend-indieout" \
-            --set-env-vars "PORT=8080" \
             --set-secrets "DATABASE_URL=database-url:latest" \
             --set-secrets "RAILS_MASTER_KEY=rails-master-key:latest" \
             --set-secrets "JWT_SECRET_KEY=jwt-secret-key:latest" \

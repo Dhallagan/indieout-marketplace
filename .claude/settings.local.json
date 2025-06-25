@@ -9,7 +9,9 @@
       "Bash(rg:*)",
       "Bash(npm run generate:types:*)",
       "Bash(touch:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(ls:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }
