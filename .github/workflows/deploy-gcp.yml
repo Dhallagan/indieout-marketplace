@@ -1,0 +1,293 @@
+name: Deploy to Google Cloud Platform
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GAR_LOCATION: us-central1
+  REPOSITORY: indieout
+  SERVICE_ACCOUNT: ${{ secrets.GCP_SA_EMAIL }}
+  WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.WIP }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2.2'
+          bundler-cache: true
+          working-directory: ./api
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: ./client/package-lock.json
+      
+      - name: Install Rails dependencies
+        working-directory: ./api
+        run: bundle install --jobs 4 --retry 3
+      
+      - name: Setup test database
+        working-directory: ./api
+        env:
+          RAILS_ENV: test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+        run: |
+          bin/rails db:create
+          bin/rails db:schema:load
+      
+      - name: Run Rails tests
+        working-directory: ./api
+        env:
+          RAILS_ENV: test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+        run: bundle exec rspec
+      
+      - name: Install frontend dependencies
+        working-directory: ./client
+        run: npm ci
+      
+      - name: Run frontend tests
+        working-directory: ./client
+        run: npm test -- --run
+      
+      - name: Build frontend
+        working-directory: ./client
+        env:
+          VITE_API_URL: https://api-${{ env.PROJECT_ID }}.a.run.app
+        run: npm run build
+
+  deploy-api:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev
+      
+      - name: Build and push API image
+        working-directory: ./api
+        run: |
+          IMAGE_TAG="${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/api:${{ github.sha }}"
+          docker build -t $IMAGE_TAG .
+          docker push $IMAGE_TAG
+      
+      - name: Create Cloud SQL connection secret
+        run: |
+          echo "${{ secrets.CLOUD_SQL_CONNECTION }}" | gcloud secrets create cloud-sql-connection --data-file=- || \
+          echo "${{ secrets.CLOUD_SQL_CONNECTION }}" | gcloud secrets versions add cloud-sql-connection --data-file=-
+      
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy indieout-api \
+            --image ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/api:${{ github.sha }} \
+            --region ${{ env.GAR_LOCATION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --add-cloudsql-instances ${{ secrets.CLOUD_SQL_CONNECTION }} \
+            --service-account ${{ env.SERVICE_ACCOUNT }} \
+            --set-env-vars "RAILS_ENV=production" \
+            --set-env-vars "RAILS_LOG_TO_STDOUT=true" \
+            --set-env-vars "RAILS_SERVE_STATIC_FILES=true" \
+            --set-env-vars "FRONTEND_URL=https://indieout.com" \
+            --set-secrets "DATABASE_URL=database-url:latest" \
+            --set-secrets "RAILS_MASTER_KEY=rails-master-key:latest" \
+            --set-secrets "JWT_SECRET_KEY=jwt-secret-key:latest" \
+            --set-secrets "SMTP_PASSWORD=smtp-password:latest" \
+            --set-secrets "STRIPE_SECRET_KEY=stripe-secret-key:latest" \
+            --min-instances 1 \
+            --max-instances 10 \
+            --memory 1Gi \
+            --cpu 1 \
+            --timeout 60
+      
+      - name: Run database migrations
+        run: |
+          gcloud run jobs create migrate-db \
+            --image ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/api:${{ github.sha }} \
+            --region ${{ env.GAR_LOCATION }} \
+            --add-cloudsql-instances ${{ secrets.CLOUD_SQL_CONNECTION }} \
+            --service-account ${{ env.SERVICE_ACCOUNT }} \
+            --set-env-vars "RAILS_ENV=production" \
+            --set-secrets "DATABASE_URL=database-url:latest" \
+            --set-secrets "RAILS_MASTER_KEY=rails-master-key:latest" \
+            --command "bundle,exec,rails,db:migrate" \
+            --max-retries 3 \
+            --timeout 600 || true
+          
+          gcloud run jobs execute migrate-db --region ${{ env.GAR_LOCATION }} --wait
+
+  deploy-frontend:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: ./client/package-lock.json
+      
+      - name: Install and build frontend
+        working-directory: ./client
+        env:
+          VITE_API_URL: https://api-${{ env.PROJECT_ID }}.a.run.app
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+        run: |
+          npm ci
+          npm run build
+      
+      - name: Deploy to Cloud Storage
+        working-directory: ./client
+        run: |
+          # Create bucket if it doesn't exist
+          gsutil mb -p ${{ env.PROJECT_ID }} gs://indieout-frontend-${{ env.PROJECT_ID }} || true
+          
+          # Enable versioning
+          gsutil versioning set on gs://indieout-frontend-${{ env.PROJECT_ID }}
+          
+          # Upload files with proper cache headers
+          gsutil -m rsync -r -d \
+            -x ".*\.map$" \
+            -h "Cache-Control:public, max-age=3600" \
+            -h "Content-Encoding:gzip" \
+            dist/ gs://indieout-frontend-${{ env.PROJECT_ID }}/
+          
+          # Set special cache headers for index.html
+          gsutil setmeta \
+            -h "Cache-Control:no-cache, no-store, must-revalidate" \
+            -h "Content-Type:text/html" \
+            gs://indieout-frontend-${{ env.PROJECT_ID }}/index.html
+          
+          # Set cache headers for static assets
+          gsutil -m setmeta \
+            -h "Cache-Control:public, max-age=31536000, immutable" \
+            "gs://indieout-frontend-${{ env.PROJECT_ID }}/assets/**"
+      
+      - name: Configure Load Balancer and CDN
+        run: |
+          # Create backend bucket
+          gcloud compute backend-buckets create indieout-frontend-backend \
+            --gcs-bucket-name=indieout-frontend-${{ env.PROJECT_ID }} \
+            --enable-cdn \
+            --cache-mode=CACHE_ALL_STATIC || true
+          
+          # Create URL map
+          gcloud compute url-maps create indieout-frontend-lb \
+            --default-backend-bucket=indieout-frontend-backend || true
+          
+          # Create HTTPS proxy
+          gcloud compute target-https-proxies create indieout-frontend-https-proxy \
+            --url-map=indieout-frontend-lb \
+            --ssl-certificates=indieout-ssl-cert || true
+          
+          # Create forwarding rule
+          gcloud compute forwarding-rules create indieout-frontend-https-rule \
+            --global \
+            --target-https-proxy=indieout-frontend-https-proxy \
+            --ports=443 || true
+
+  deploy-infrastructure:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Apply Terraform
+        working-directory: ./terraform/gcp
+        run: |
+          terraform init
+          terraform plan -out=tfplan
+          terraform apply tfplan
+
+  notify:
+    needs: [deploy-api, deploy-frontend]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Send Slack notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Deployment to GCP ${{ job.status }}
+            API: https://api-${{ env.PROJECT_ID }}.a.run.app
+            Frontend: https://indieout.com
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
