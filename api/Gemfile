@@ -21,7 +21,7 @@ gem "jsonapi-serializer"
 # Image uploading and processing
 gem "image_processing", "~> 1.2"
 gem "shrine", "~> 3.6"
-gem "aws-sdk-s3", "~> 1.0"
+gem "shrine-google_cloud_storage", "~> 3.3"
 gem "ruby-vips" # For faster image processing
 
 # API documentation and type generation

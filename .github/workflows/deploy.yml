@@ -44,7 +44,7 @@ jobs:
           # OS deps
           RUN apt-get update -qq && \
               apt-get install -y build-essential libpq-dev nodejs git \
-              libyaml-dev libffi-dev && \
+              libyaml-dev libffi-dev libvips && \
               apt-get clean && rm -rf /var/lib/apt/lists/*
 
           WORKDIR /app
@@ -60,9 +60,8 @@ jobs:
           # Make entrypoint executable
           RUN chmod +x /app/bin/docker-entrypoint.sh
 
-          # Assets
-          RUN cp config/database.yml.example config/database.yml || true && \
-              bundle exec rake assets:precompile RAILS_ENV=production || true
+          # Precompile assets
+          RUN bundle exec rake assets:precompile RAILS_ENV=production || true
 
           ENV RAILS_ENV=production RACK_ENV=production PORT=8080
           EXPOSE 8080
@@ -84,4 +83,4 @@ jobs:
             --platform managed \
             --allow-unauthenticated \
             --add-cloudsql-instances "$PROJECT_ID:$REGION:indieout-db" \
-            --set-env-vars RAILS_ENV=production,RACK_ENV=production,SECRET_TOKEN=${{ secrets.SECRET_TOKEN }},DB_NAME=indieout_production,DB_USERNAME=indieout-app-user,DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            --set-env-vars RAILS_ENV=production,RACK_ENV=production,RAILS_MASTER_KEY=${{ secrets.RAILS_MASTER_KEY }},DB_NAME=indieout_production,DB_USERNAME=indieout-app-user,DB_PASSWORD=${{ secrets.DB_PASSWORD }},GCS_BUCKET=${{ secrets.GCS_BUCKET }},GCP_PROJECT_ID=${{ env.PROJECT_ID }}

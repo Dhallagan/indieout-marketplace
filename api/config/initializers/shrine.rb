@@ -1,20 +1,18 @@
 require "shrine"
-require "shrine/storage/s3"
+require "shrine/storage/google_cloud_storage"
 require "shrine/storage/file_system"
 
 # For development/test, we'll use filesystem storage
-# For production, we'll use S3
+# For production, we'll use Google Cloud Storage
 if Rails.env.production?
-  s3_options = {
-    bucket: ENV.fetch("AWS_S3_BUCKET"),
-    region: ENV.fetch("AWS_S3_REGION", "us-east-1"),
-    access_key_id: ENV.fetch("AWS_ACCESS_KEY_ID"),
-    secret_access_key: ENV.fetch("AWS_SECRET_ACCESS_KEY")
+  gcs_options = {
+    bucket: ENV.fetch("GCS_BUCKET"),
+    project: ENV.fetch("GCP_PROJECT_ID", "indieout")
   }
 
   Shrine.storages = {
-    cache: Shrine::Storage::S3.new(prefix: "cache", **s3_options),
-    store: Shrine::Storage::S3.new(prefix: "store", **s3_options)
+    cache: Shrine::Storage::GoogleCloudStorage.new(prefix: "cache", **gcs_options),
+    store: Shrine::Storage::GoogleCloudStorage.new(prefix: "store", **gcs_options)
   }
 else
   # Development/test using local filesystem
