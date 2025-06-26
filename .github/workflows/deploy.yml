@@ -82,5 +82,9 @@ jobs:
             --region "$REGION" \
             --platform managed \
             --allow-unauthenticated \
+            --port 8080 \
+            --min-instances 0 \
+            --max-instances 10 \
+            --timeout 60 \
             --add-cloudsql-instances "$PROJECT_ID:$REGION:indieout-db" \
             --set-env-vars RAILS_ENV=production,RACK_ENV=production,RAILS_MASTER_KEY=${{ secrets.RAILS_MASTER_KEY }},DB_NAME=indieout_production,DB_USERNAME=indieout-app-user,DB_PASSWORD=${{ secrets.DB_PASSWORD }},GCS_BUCKET=${{ secrets.GCS_BUCKET }},GCP_PROJECT_ID=${{ env.PROJECT_ID }}
