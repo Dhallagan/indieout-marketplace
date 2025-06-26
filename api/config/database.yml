@@ -80,6 +80,10 @@ test:
 # for a full overview on how database connection configuration can be specified.
 #
 production:
-  <<: *default
-  url: <%= ENV["DATABASE_URL"] %>
-  database: outdoor_marketplace_production
+  adapter: postgresql
+  encoding: unicode
+  host: <%= ENV['DB_HOST'] || '/cloudsql/indieout:us-central1:indieout-db' %>
+  database: <%= ENV['DB_NAME'] || 'indieout_production' %>
+  username: <%= ENV['DB_USERNAME'] || 'indieout-app-user' %>
+  password: <%= ENV['DB_PASSWORD'] %>
+  pool: 5

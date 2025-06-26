@@ -1,40 +1,30 @@
-# Rails API Dockerfile
-FROM ruby:3.2.6-alpine
+FROM ruby:2.3-slim
 
 # Install dependencies
-RUN apk add --no-cache \
-    build-base \
-    postgresql-client \
-    postgresql-dev \
-    tzdata \
-    git \
-    vips \
-    vips-dev \
-    curl \
-    bash
+RUN apt-get update -qq && apt-get install -y build-essential libpq-dev nodejs git
 
-# Set working directory
 WORKDIR /app
 
-# Copy Gemfiles
-COPY Gemfile Gemfile.lock ./
+# Install bundler that works with Rails 3.2.6
+RUN gem install bundler -v 1.17.3
 
-# Install gems
-RUN bundle install --jobs 4 --retry 3
+# Copy Gemfile and install gems
+COPY Gemfile Gemfile.lock ./
+RUN bundle _1.17.3_ install --without development test
 
 # Copy application code
 COPY . .
 
-# Create necessary directories
-RUN mkdir -p tmp/pids tmp/sockets log storage public/uploads && \
-    chmod -R 755 .
+# Setup Rails-specific settings for production
+RUN cp config/database.yml.example config/database.yml || true
+RUN bundle _1.17.3_ exec rake assets:precompile RAILS_ENV=production || true
 
-# Copy entrypoint script
-COPY docker-entrypoint.sh /app/
-RUN chmod +x /app/docker-entrypoint.sh
+# Set environment variables
+ENV RAILS_ENV=production
+ENV RACK_ENV=production
 
 # Expose port
 EXPOSE 8080
 
-# Start Rails server
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+# Start the server
+CMD ["bundle", "exec", "rails", "server", "-p", "8080", "-e", "production"]

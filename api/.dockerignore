@@ -1,6 +1,7 @@
 # Ignore version control
 .git
 .gitignore
+.github
 
 # Ignore bundler config
 /.bundle

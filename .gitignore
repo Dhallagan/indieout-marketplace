@@ -68,3 +68,6 @@ fly.machine.id
 # Deployment specific
 .env.production
 .env.staging
+
+gcp-sa-key.json
+github-secrets.txt
