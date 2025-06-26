@@ -1,29 +1,32 @@
-FROM ruby:2.3-slim
+FROM ruby:2.5-slim        # 2.3 is EOL; Rails 3.2 runs fine on 2.5
 
-# Install dependencies
-RUN apt-get update -qq && apt-get install -y build-essential libpq-dev nodejs git
+# OS packages – add yarn if you precompile JS/CSS
+RUN apt-get update -qq && \
+    apt-get install -y build-essential libpq-dev nodejs git && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install bundler that works with Rails 3.2.6
+# Bundler that matches Rails 3.x
 RUN gem install bundler -v 1.17.3
 
-# Copy the Rails application
+# Copy app
 COPY api/ /app/
 
+# Patch Gemfile (remove after you fix it in the repo)
+RUN sed -i 's/%i\[ windows jruby \]/[:mingw, :mswin, :x64_mingw, :jruby]/' Gemfile
+
 # Install gems
-RUN bundle _1.17.3_ install --without development test
+RUN bundle _1.17.3_ config set --local path 'vendor/bundle' && \
+    bundle _1.17.3_ install --without development test
 
-# Setup Rails-specific settings for production
-RUN cp config/database.yml.example config/database.yml || true
-RUN bundle _1.17.3_ exec rake assets:precompile RAILS_ENV=production || true
+# Pre-compile assets (ignore if the app has none)
+RUN cp config/database.yml.example config/database.yml || true && \
+    bundle _1.17.3_ exec rake assets:precompile RAILS_ENV=production || true
 
-# Set environment variables
-ENV RAILS_ENV=production
-ENV RACK_ENV=production
+ENV RAILS_ENV=production \
+    RACK_ENV=production \
+    BUNDLE_DEPLOYMENT=1
 
-# Expose port
 EXPOSE 8080
-
-# Start the server
 CMD ["bundle", "exec", "rails", "server", "-p", "8080", "-e", "production"]
