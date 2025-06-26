@@ -31,7 +31,7 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
 
       - name: Authorise Docker push
-        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+        run: gcloud auth configure-docker --quiet
 
       # 4 ▪︎ Test build locally first
       - name: Test Docker build
@@ -101,7 +101,7 @@ jobs:
 
       - name: Build & push image
         run: |
-          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          IMAGE="gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
