@@ -57,13 +57,18 @@ jobs:
               bundle config set --local without 'development test' && \
               bundle install
 
+          # Make entrypoint executable
+          RUN chmod +x /app/bin/docker-entrypoint.sh
+
           # Assets
           RUN cp config/database.yml.example config/database.yml || true && \
               bundle exec rake assets:precompile RAILS_ENV=production || true
 
-          ENV RAILS_ENV=production RACK_ENV=production
+          ENV RAILS_ENV=production RACK_ENV=production PORT=8080
           EXPOSE 8080
-          CMD ["bundle","exec","rails","server","-p","8080","-e","production"]
+          
+          ENTRYPOINT ["/app/bin/docker-entrypoint.sh"]
+          CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]
           EOF
 
       # 5 ▪︎ Deploy using Cloud Build
