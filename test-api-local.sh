@@ -2,7 +2,7 @@
 
 echo "Creating Dockerfile with libvips..."
 cat > Dockerfile <<'EOF'
-FROM ruby:3.3-slim
+FROM ruby:3.2-slim
 
 # OS deps
 RUN apt-get update -qq && \
