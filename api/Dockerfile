@@ -8,12 +8,11 @@ WORKDIR /app
 # Install bundler that works with Rails 3.2.6
 RUN gem install bundler -v 1.17.3
 
-# Copy Gemfile and install gems
-COPY Gemfile Gemfile.lock ./
-RUN bundle _1.17.3_ install --without development test
+# Copy the Rails application
+COPY api/ /app/
 
-# Copy application code
-COPY . .
+# Install gems
+RUN bundle _1.17.3_ install --without development test
 
 # Setup Rails-specific settings for production
 RUN cp config/database.yml.example config/database.yml || true

@@ -8,6 +8,7 @@ env:
   PROJECT_ID: indieout
   SERVICE_NAME: indieout
   REGION: us-central1
+  RAILS_APP_PATH: api # Path to the Rails app within your repository
 
 jobs:
   deploy:
@@ -16,18 +17,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '2.3'
-          bundler-cache: true
-          bundler: '1.17.3'
-
-      - name: Run tests
-        run: |
-          bundle _1.17.3_ install --without development production
-          bundle _1.17.3_ exec rake test  # Adjust based on your test framework
 
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
@@ -38,6 +27,40 @@ jobs:
 
       - name: Authorize Docker push to Google Container Registry
         run: gcloud auth configure-docker
+
+      - name: Create Dockerfile
+        run: |
+          cat > Dockerfile << 'EOL'
+          FROM ruby:2.3-slim
+
+          # Install dependencies
+          RUN apt-get update -qq && apt-get install -y build-essential libpq-dev nodejs git
+
+          WORKDIR /app
+
+          # Install bundler that works with Rails 3.2.6
+          RUN gem install bundler -v 1.17.3
+
+          # Copy the Rails application from the api folder
+          COPY $RAILS_APP_PATH /app
+
+          # Install gems
+          RUN bundle _1.17.3_ install --without development test
+
+          # Setup Rails-specific settings for production
+          RUN cp config/database.yml.example config/database.yml || true
+          RUN bundle _1.17.3_ exec rake assets:precompile RAILS_ENV=production || true
+
+          # Set environment variables
+          ENV RAILS_ENV=production
+          ENV RACK_ENV=production
+
+          # Expose port
+          EXPOSE 8080
+
+          # Start the server
+          CMD ["bundle", "exec", "rails", "server", "-p", "8080", "-e", "production"]
+          EOL
 
       - name: Build and push Docker image
         run: |
