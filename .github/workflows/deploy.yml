@@ -21,40 +21,48 @@ jobs:
       # 1 ▪︎ Checkout
       - uses: actions/checkout@v4
 
-      # 2 ▪︎ Authenticate with a JSON service-account key
+      # 2 ▪︎ Key-based auth to GCP
       - id: auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      # 3 ▪︎ Install gcloud + Docker credential helper
+      # 3 ▪︎ gcloud + Docker helper
       - uses: google-github-actions/setup-gcloud@v2
 
       - name: Authorise Docker push
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      # 4 ▪︎ Build the image (Bundler 2, Ruby 2.5)
+      # 4 ▪︎ Build image
       - name: Create Dockerfile
         run: |
           cat > Dockerfile <<'EOF'
           FROM ruby:2.5-slim
 
+          # OS deps
           RUN apt-get update -qq && \
               apt-get install -y build-essential libpq-dev nodejs git && \
               apt-get clean && rm -rf /var/lib/apt/lists/*
 
           WORKDIR /app
-          RUN gem install bundler -v 2.3.27
 
+          # Fix RubyGems warning + install Bundler 2 that works on Ruby 2.5
+          RUN gem update --system 3.2.3 && \
+              gem install bundler -v 2.3.27
+
+          # App code
           COPY api/ /app/
 
+          # Patch Gemfile quirks
           RUN sed -i 's/%i\\[ windows jruby \\]/[:mingw, :mswin, :x64_mingw, :jruby]/' Gemfile \
-          && sed -i "/^ruby ['\"]/d" Gemfile \
-          && echo "ruby '2.5.0'" >> Gemfile
+              && sed -i "/^ruby ['\"]/d" Gemfile
 
+          # Bundler config & install
           RUN bundle config set --local path 'vendor/bundle' && \
-              bundle install --without development test
+              bundle config set --local without 'development test' && \
+              bundle install
 
+          # Assets
           RUN cp config/database.yml.example config/database.yml || true && \
               bundle exec rake assets:precompile RAILS_ENV=production || true
 
