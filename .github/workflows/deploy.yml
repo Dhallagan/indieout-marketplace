@@ -1,84 +1,79 @@
-name: Deploy to Cloud Run
+name: Deploy Rails to Cloud Run
 
 on:
   push:
-    branches: [main] # Adjust based on your branch name
+    branches: [main]
 
 env:
   PROJECT_ID: indieout
-  SERVICE_NAME: indieout
   REGION: us-central1
+  SERVICE_NAME: indieout
+  REPO_NAME: indieout # Artifact Registry repo
+
+permissions:
+  contents: read
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      # 1 ▪︎ Checkout
+      - uses: actions/checkout@v4
 
-      - name: Set up Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
+      # 2 ▪︎ Authenticate with a JSON service-account key
+      - id: auth
+        uses: google-github-actions/auth@v2
         with:
-          project_id: ${{ env.PROJECT_ID }}
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
-          export_default_credentials: true
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Authorize Docker push to Google Container Registry
-        run: gcloud auth configure-docker
+      # 3 ▪︎ Install gcloud + Docker credential helper
+      - uses: google-github-actions/setup-gcloud@v2
 
+      - name: Authorise Docker push
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      # 4 ▪︎ Build the image (Bundler 2, Ruby 2.5)
       - name: Create Dockerfile
         run: |
-          cat > Dockerfile << 'EOL'
-          FROM ruby:3.0-slim
+          cat > Dockerfile <<'EOF'
+          FROM ruby:2.5-slim
 
-          # Install dependencies
           RUN apt-get update -qq && \
               apt-get install -y build-essential libpq-dev nodejs git && \
-              apt-get clean && \
-              rm -rf /var/lib/apt/lists/*
+              apt-get clean && rm -rf /var/lib/apt/lists/*
 
           WORKDIR /app
+          RUN gem install bundler -v 2.5.6
 
-          # Install bundler for Rails 3.2.6
-          RUN gem install bundler -v 1.17.3
-
-          # Set Rails version to 3.2.6
-          RUN echo "gem 'rails', '3.2.6'" > Gemfile
-
-          # Copy the Rails application from the api folder
           COPY api/ /app/
+          RUN sed -i 's/%i\\[ windows jruby \\]/[:mingw, :mswin, :x64_mingw, :jruby]/' Gemfile
 
-          # Install gems
-          RUN bundle _1.17.3_ config set --local path 'vendor/bundle' && \
-              bundle _1.17.3_ install --without development test
+          RUN bundle config set --local path 'vendor/bundle' && \
+              bundle install --without development test
 
-          # Setup Rails-specific settings for production
-          RUN cp config/database.yml.example config/database.yml || true
-          RUN bundle _1.17.3_ exec rake assets:precompile RAILS_ENV=production || true
+          RUN cp config/database.yml.example config/database.yml || true && \
+              bundle exec rake assets:precompile RAILS_ENV=production || true
 
-          # Set environment variables
-          ENV RAILS_ENV=production
-          ENV RACK_ENV=production
-
-          # Expose port
+          ENV RAILS_ENV=production RACK_ENV=production
           EXPOSE 8080
+          CMD ["bundle","exec","rails","server","-p","8080","-e","production"]
+          EOF
 
-          # Start the server
-          CMD ["bundle", "exec", "rails", "server", "-p", "8080", "-e", "production"]
-          EOL
-
-      - name: Build and push Docker image
+      - name: Build & push image
         run: |
-          docker build -t gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA .
-          docker push gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA
+          IMAGE="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
 
+      # 5 ▪︎ Deploy
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy $SERVICE_NAME \
-            --image gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA \
+          gcloud run deploy "$SERVICE_NAME" \
+            --image "$IMAGE" \
+            --region "$REGION" \
             --platform managed \
-            --region $REGION \
             --allow-unauthenticated \
-            --add-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:indieout-db \
-            --set-env-vars="RAILS_ENV=production,RACK_ENV=production,SECRET_TOKEN=${{ secrets.SECRET_TOKEN }},DB_NAME=indieout_production,DB_USERNAME=indieout-app-user,DB_PASSWORD=${{ secrets.DB_PASSWORD }}"
+            --add-cloudsql-instances "$PROJECT_ID:$REGION:indieout-db" \
+            --set-env-vars RAILS_ENV=production,RACK_ENV=production,SECRET_TOKEN=${{ secrets.SECRET_TOKEN }},DB_NAME=indieout_production,DB_USERNAME=indieout-app-user,DB_PASSWORD=${{ secrets.DB_PASSWORD }}
