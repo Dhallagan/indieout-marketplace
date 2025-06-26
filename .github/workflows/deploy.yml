@@ -33,7 +33,42 @@ jobs:
       - name: Authorise Docker push
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      # 4 ▪︎ Build image
+      # 4 ▪︎ Test build locally first
+      - name: Test Docker build
+        run: |
+          cat > Dockerfile <<'EOF'
+          FROM ruby:3.3-slim
+
+          # OS deps
+          RUN apt-get update -qq && \
+              apt-get install -y build-essential libpq-dev nodejs git \
+              libyaml-dev libffi-dev && \
+              apt-get clean && rm -rf /var/lib/apt/lists/*
+
+          WORKDIR /app
+
+          # App code
+          COPY api/ /app/
+
+          # Bundler config & install
+          RUN bundle config set --local path 'vendor/bundle' && \
+              bundle config set --local without 'development test' && \
+              bundle install
+
+          # Assets
+          RUN cp config/database.yml.example config/database.yml || true && \
+              bundle exec rake assets:precompile RAILS_ENV=production || true
+
+          ENV RAILS_ENV=production RACK_ENV=production
+          EXPOSE 8080
+          CMD ["bundle","exec","rails","server","-p","8080","-e","production"]
+          EOF
+          
+          # Test build
+          docker build -t test-build .
+          echo "Test build successful!"
+
+      # 5 ▪︎ Build image for deployment
       - name: Create Dockerfile
         run: |
           cat > Dockerfile <<'EOF'
