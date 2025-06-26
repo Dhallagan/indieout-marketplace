@@ -8,7 +8,6 @@ env:
   PROJECT_ID: indieout
   SERVICE_NAME: indieout
   REGION: us-central1
-  RAILS_APP_PATH: api # Path to the Rails app within your repository
 
 jobs:
   deploy:
@@ -42,7 +41,7 @@ jobs:
           RUN gem install bundler -v 1.17.3
 
           # Copy the Rails application from the api folder
-          COPY $RAILS_APP_PATH /app
+          COPY api/ /app/
 
           # Install gems
           RUN bundle _1.17.3_ install --without development test
