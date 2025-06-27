@@ -1,10 +1,14 @@
 name: Deploy Rails to Cloud Run
 
-# Required GCP Service Account permissions:
-# - Cloud Run Admin
-# - Service Account User
-# - Cloud Build Editor
-# - Cloud SQL Client (if using Cloud SQL)
+# Required GCP setup for OIDC:
+# 1. Create Workload Identity Pool and Provider
+# 2. Configure Service Account with permissions:
+#    - Cloud Run Admin
+#    - Service Account User  
+#    - Cloud Build Editor
+#    - Cloud SQL Client (if using Cloud SQL)
+# 3. Bind GitHub repository to Workload Identity Pool
+# 4. Set secrets: WIF_PROVIDER and WIF_SERVICE_ACCOUNT
 
 on:
   push:
@@ -17,6 +21,7 @@ env:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   deploy:
@@ -26,11 +31,12 @@ jobs:
       # 1 ▪︎ Checkout
       - uses: actions/checkout@v4
 
-      # 2 ▪︎ Key-based auth to GCP
+      # 2 ▪︎ OIDC auth to GCP
       - id: auth
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
       # 3 ▪︎ gcloud setup
       - uses: google-github-actions/setup-gcloud@v2
