@@ -17,34 +17,44 @@ class Api::V1::HeroContentController < ApplicationController
   def update
     hero = HeroContent.current || create_default_hero
     
-    # Handle file uploads
-    if params[:hero][:background_image_file].present?
-      hero.background_image = params[:hero][:background_image_file]
-      params[:hero].delete(:background_image_file)
-    end
-    
-    if params[:hero][:featured_collection_image_file].present?
-      hero.featured_collection_image = params[:hero][:featured_collection_image_file]
-      params[:hero].delete(:featured_collection_image_file)
-    end
-    
-    # Remove existing image URLs from params - Shrine will preserve them automatically
-    # Only update images when new files are uploaded
-    params[:hero].delete(:background_image)
-    params[:hero].delete(:featured_collection_image)
-    
-    if hero.update(hero_params)
-      render json: {
-        success: true,
-        data: {
-          hero: serialize_hero(hero)
+    begin
+      # Handle file uploads
+      if params[:hero][:background_image_file].present?
+        hero.background_image = params[:hero][:background_image_file]
+        params[:hero].delete(:background_image_file)
+      end
+      
+      if params[:hero][:featured_collection_image_file].present?
+        hero.featured_collection_image = params[:hero][:featured_collection_image_file]
+        params[:hero].delete(:featured_collection_image_file)
+      end
+      
+      # Remove existing image URLs from params - Shrine will preserve them automatically
+      # Only update images when new files are uploaded
+      params[:hero].delete(:background_image) if params[:hero].key?(:background_image)
+      params[:hero].delete(:featured_collection_image) if params[:hero].key?(:featured_collection_image)
+      
+      if hero.update(hero_params)
+        render json: {
+          success: true,
+          data: {
+            hero: serialize_hero(hero)
+          }
         }
-      }
-    else
+      else
+        render json: {
+          success: false,
+          error: hero.errors.full_messages.first
+        }, status: :unprocessable_entity
+      end
+    rescue => e
+      Rails.logger.error "Error updating hero content: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      
       render json: {
         success: false,
-        error: hero.errors.full_messages.first
-      }, status: :unprocessable_entity
+        error: "Failed to update hero content: #{e.message}"
+      }, status: :internal_server_error
     end
   end
 
@@ -52,12 +62,35 @@ class Api::V1::HeroContentController < ApplicationController
   def current
     hero = HeroContent.current || default_hero_data
     
-    render json: {
-      success: true,
-      data: {
-        hero: hero.is_a?(HeroContent) ? serialize_hero(hero) : hero
+    begin
+      if hero.is_a?(HeroContent)
+        serialized = serialize_hero(hero)
+        render json: {
+          success: true,
+          data: {
+            hero: serialized
+          }
+        }
+      else
+        render json: {
+          success: true,
+          data: {
+            hero: hero
+          }
+        }
+      end
+    rescue => e
+      Rails.logger.error "Error in hero content current: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      
+      # Return default data on error
+      render json: {
+        success: true,
+        data: {
+          hero: default_hero_data
+        }
       }
-    }
+    end
   end
 
   private
@@ -107,18 +140,32 @@ class Api::V1::HeroContentController < ApplicationController
   end
 
   def get_image_url(hero, field, derivative = :original)
-    if hero.send("#{field}_data").present?
+    return nil unless hero.respond_to?(field)
+    
+    # Check if there's Shrine data for this field
+    if hero.respond_to?("#{field}_data") && hero.send("#{field}_data").present?
       # Return Shrine URL for uploaded file
       attacher = hero.send("#{field}_attacher")
+      return nil unless attacher && attacher.file
+      
       if derivative == :original
         attacher.url
       else
-        attacher.url(derivative) if attacher.derivatives[derivative]
+        # Check if derivative exists before trying to get its URL
+        if attacher.derivatives && attacher.derivatives[derivative]
+          attacher.url(derivative)
+        else
+          # Fall back to original if derivative doesn't exist
+          attacher.url
+        end
       end
     else
       # Return the legacy URL string if no file uploaded
-      hero.send(field)
+      hero.send(field) if hero.respond_to?(field)
     end
+  rescue => e
+    Rails.logger.error "Error getting image URL for #{field}: #{e.message}"
+    nil
   end
 
   def create_default_hero

@@ -44,10 +44,17 @@ Shrine.plugin :derivatives # for creating image derivatives (replaces processing
 
 # Configure URL options for generating absolute URLs
 # S3/Tigris provides full URLs in all environments
-Shrine.plugin :url_options, store: { 
-  public: true,
-  host: ENV.fetch("CDN_HOST", nil) # Optional CDN host
-}
+Shrine.plugin :url_options, 
+  cache: { 
+    public: true,
+    expires_in: 24 * 60 * 60, # 24 hours for cache URLs
+    host: ENV.fetch("CDN_HOST", nil)
+  },
+  store: { 
+    public: true,
+    expires_in: 7 * 24 * 60 * 60, # 7 days for store URLs
+    host: ENV.fetch("CDN_HOST", nil)
+  }
 
 # Configure derivatives (thumbnails and optimized images)
 Shrine.plugin :derivatives, create_on_promote: true

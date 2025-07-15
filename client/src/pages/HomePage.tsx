@@ -43,6 +43,7 @@ export default function HomePage() {
         // Load hero content separately to handle errors gracefully
         try {
           const heroData = await getCurrentHeroContent()
+          console.log('Hero content loaded:', heroData) // Debug log
           setHeroContent(heroData)
         } catch (error) {
           console.error('Failed to load hero content:', error)
@@ -157,9 +158,10 @@ export default function HomePage() {
               <div 
                 className="h-96 bg-gradient-to-br from-forest-600 to-forest-800 rounded-2xl relative overflow-hidden shadow-2xl"
                 style={heroContent?.featured_collection_image ? {
-                  backgroundImage: `url(${heroContent.featured_collection_image})`,
+                  backgroundImage: `url("${heroContent.featured_collection_image}")`,
                   backgroundSize: 'cover',
-                  backgroundPosition: 'center'
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat'
                 } : {}}
               >
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>

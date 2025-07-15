@@ -20,7 +20,8 @@
       "Bash(docker-compose:*)",
       "Bash(fly deploy:*)",
       "Bash(fly status:*)",
-      "Bash(fly logs:*)"
+      "Bash(fly logs:*)",
+      "Bash(fly storage update:*)"
     ],
     "deny": []
   }

@@ -406,7 +406,10 @@ export default function HeroManagementPage() {
                         <div className="mt-2">
                           <p className="text-sm font-medium text-charcoal-700 mb-1">Preview:</p>
                           <img 
-                            src={heroContent.featured_collection_image_thumb || heroContent.featured_collection_image} 
+                            src={heroContent.featured_collection_image && heroContent.featured_collection_image.startsWith('blob:') 
+                              ? heroContent.featured_collection_image 
+                              : (heroContent.featured_collection_image_thumb || heroContent.featured_collection_image)
+                            } 
                             alt="Collection preview" 
                             className="w-48 h-48 object-cover rounded-lg border border-sand-200"
                           />
