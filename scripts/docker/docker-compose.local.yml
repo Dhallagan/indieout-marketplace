@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: indieout_development
     ports:
-      - "54321:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -18,51 +18,47 @@ services:
       timeout: 5s
       retries: 5
 
-  # Rails API
+  # Rails API (Development)
   api:
     build:
-      context: .
+      context: ../..
       dockerfile: api/Dockerfile.dev
     ports:
       - "3000:3000"
-    env_file:
-      - .env
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@host.docker.internal:54321/indieout_development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/indieout_development
       RAILS_ENV: development
       RAILS_MASTER_KEY: ${RAILS_MASTER_KEY:-development_key}
-      PORT: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
-      - ./api:/rails
+      - ../../api:/rails
       - api_storage:/rails/storage
     command: >
       sh -c "bundle install &&
-             rm -f /rails/tmp/pids/server.pid &&
-             bundle exec rails db:migrate:status || bundle exec rails db:drop db:create db:migrate db:seed &&
+             bundle exec rails db:create db:migrate db:seed &&
              bundle exec rails server -b 0.0.0.0"
 
-  # React Frontend
+  # React Frontend (Development)
   client:
     build:
-      context: .
+      context: ../..
       dockerfile: client/Dockerfile.dev
     ports:
       - "3001:3000"
     environment:
-      VITE_API_URL: ""
-      VITE_API_HOST: api
+      VITE_API_URL: http://localhost:3000
     volumes:
-      - ./client:/app
+      - ../../client:/app
       - /app/node_modules
-    command: >
-      sh -c "npm install &&
-             npm run dev -- --host --config vite.config.docker.ts"
+    command: npm run dev -- --host
 
   # Full Monorepo (Production-like)
   monorepo:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: scripts/docker/Dockerfile.monorepo
       args:
         VITE_API_URL: http://localhost:8080
     ports:
@@ -77,6 +73,7 @@ services:
       AWS_ENDPOINT_URL_S3: ${AWS_ENDPOINT_URL_S3}
       AWS_REGION: ${AWS_REGION}
       JWT_SECRET: ${JWT_SECRET}
+      RUN_MIGRATIONS: "true"
     depends_on:
       postgres:
         condition: service_healthy

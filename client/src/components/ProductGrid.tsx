@@ -23,10 +23,10 @@ export default function ProductGrid({
   className = ""
 }: ProductGridProps) {
   const columnClasses = {
-    2: 'grid-cols-1 sm:grid-cols-2',
-    3: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
-    4: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
-    5: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
+    2: 'grid-cols-2',
+    3: 'grid-cols-2 sm:grid-cols-3',
+    4: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4',
+    5: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
   }
 
   if (isLoading) {
@@ -39,7 +39,7 @@ export default function ProductGrid({
           </div>
         )}
         
-        <div className={`grid ${columnClasses[columns]} gap-6`}>
+        <div className={`grid ${columnClasses[columns]} gap-3 sm:gap-4 lg:gap-6`}>
           {Array.from({ length: 8 }).map((_, index) => (
             <div key={index} className="bg-white rounded-lg shadow-card overflow-hidden animate-pulse">
               <div className="h-64 bg-sand-200"></div>
@@ -94,7 +94,7 @@ export default function ProductGrid({
         </div>
       )}
       
-      <div className={`grid ${columnClasses[columns]} gap-6`}>
+      <div className={`grid ${columnClasses[columns]} gap-3 sm:gap-4 lg:gap-6`}>
         {products.map((product) => (
           <ProductCard 
             key={product.id} 

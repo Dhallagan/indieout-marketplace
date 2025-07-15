@@ -5,7 +5,8 @@ import CategoryIcon from '@/components/CategoryIcon'
 import { getCategories } from '@/services/categoryService'
 import { getProducts } from '@/services/productService'
 import { getCurrentHeroContent } from '@/services/heroService'
-import { Category, Product } from '@/types/api-generated'
+import { getPublicStores } from '@/services/storeService'
+import { Category, Product, Store } from '@/types/api-generated'
 
 interface HeroContent {
   title: string
@@ -23,6 +24,7 @@ interface HeroContent {
 
 export default function HomePage() {
   const [categories, setCategories] = useState<Category[]>([])
+  const [stores, setStores] = useState<Store[]>([])
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([])
   const [heroContent, setHeroContent] = useState<HeroContent | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -31,9 +33,10 @@ export default function HomePage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Load categories and products in parallel
-        const [categoriesData, productsResult] = await Promise.all([
+        // Load categories, stores and products in parallel
+        const [categoriesData, storesData, productsResult] = await Promise.all([
           getCategories(),
+          getPublicStores(),
           getProducts()
         ])
         
@@ -57,6 +60,7 @@ export default function HomePage() {
         }
         
         setCategories(categoriesData)
+        setStores(storesData)
         
         // Filter featured products
         const featured = productsResult.products.filter(product => product.is_featured)
@@ -72,13 +76,6 @@ export default function HomePage() {
     loadData()
   }, [])
 
-  const handleCategorySelect = (category: Category) => {
-    // Navigate to shop page with category filter
-    window.location.href = `/shop?category=${category.slug || category.id}`
-  }
-
-  // Get top-level categories for icon display
-  const topLevelCategories = categories.filter(cat => !cat.parent_id)
   return (
     <div className="min-h-screen bg-sand-50">
       {/* Hero Section */}
@@ -96,18 +93,18 @@ export default function HomePage() {
           </svg>
         </div>
         
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div className="text-white space-y-8">
-              <div className="inline-flex items-center bg-forest-600/20 backdrop-blur-sm border border-forest-400/30 text-forest-100 px-4 py-2 rounded-full text-sm font-medium">
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-24">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+            <div className="text-white space-y-6 lg:space-y-8">
+              <div className="inline-flex items-center bg-forest-600/20 backdrop-blur-sm border border-forest-400/30 text-forest-100 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium">
+                <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                 </svg>
                 Handcrafted for Adventure
               </div>
               
               <div>
-                <h1 className="text-5xl lg:text-7xl font-bold text-white mb-6 tracking-tight leading-tight">
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-7xl font-bold text-white mb-4 sm:mb-6 tracking-tight leading-tight">
                   {heroContent?.title || (
                     <>
                       Gear Built by <span className="text-forest-300">Adventurers</span>
@@ -115,48 +112,48 @@ export default function HomePage() {
                   )}
                 </h1>
                 {heroContent?.subtitle && (
-                  <h2 className="text-2xl lg:text-3xl font-medium text-forest-200 mb-6">
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-medium text-forest-200 mb-4 sm:mb-6">
                     {heroContent.subtitle}
                   </h2>
                 )}
-                <p className="text-xl text-forest-100 leading-relaxed max-w-xl">
+                <p className="text-base sm:text-lg lg:text-xl text-forest-100 leading-relaxed max-w-xl">
                   {heroContent?.description || 'Connect with independent makers creating durable, sustainable outdoor equipment for your next journey into the wild.'}
                 </p>
               </div>
               
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <Link
                   to={heroContent?.cta_primary_url || "/shop"}
-                  className="bg-white text-forest-900 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-forest-50 transition-colors text-center"
+                  className="bg-white text-forest-900 px-6 py-3 sm:px-8 sm:py-4 rounded-lg text-base sm:text-lg font-semibold hover:bg-forest-50 transition-colors text-center"
                 >
                   {heroContent?.cta_primary_text || "Explore Marketplace"}
                 </Link>
                 <Link
                   to={heroContent?.cta_secondary_url || "/apply-to-sell"}
-                  className="border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white hover:text-forest-900 transition-colors text-center"
+                  className="border-2 border-white text-white px-6 py-3 sm:px-8 sm:py-4 rounded-lg text-base sm:text-lg font-semibold hover:bg-white hover:text-forest-900 transition-colors text-center"
                 >
                   {heroContent?.cta_secondary_text || "Start Selling"}
                 </Link>
               </div>
 
               {/* Trust Indicators */}
-              <div className="flex items-center space-x-8 pt-4">
+              <div className="flex items-center justify-center sm:justify-start space-x-6 sm:space-x-8 pt-2 sm:pt-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-white">500+</div>
-                  <div className="text-sm text-forest-200">Makers</div>
+                  <div className="text-xl sm:text-2xl font-bold text-white">500+</div>
+                  <div className="text-xs sm:text-sm text-forest-200">Makers</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-white">10K+</div>
-                  <div className="text-sm text-forest-200">Products</div>
+                  <div className="text-xl sm:text-2xl font-bold text-white">10K+</div>
+                  <div className="text-xs sm:text-sm text-forest-200">Products</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-white">4.9★</div>
-                  <div className="text-sm text-forest-200">Rating</div>
+                  <div className="text-xl sm:text-2xl font-bold text-white">4.9★</div>
+                  <div className="text-xs sm:text-sm text-forest-200">Rating</div>
                 </div>
               </div>
             </div>
             
-            <div className="relative">
+            <div className="relative hidden lg:block">
               <div 
                 className="h-96 bg-gradient-to-br from-forest-600 to-forest-800 rounded-2xl relative overflow-hidden shadow-2xl"
                 style={heroContent?.featured_collection_image ? {
@@ -191,46 +188,74 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Category Navigation */}
+      {/* Featured Brands */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="text-center mb-16">
           <div className="inline-flex items-center bg-forest-100 text-forest-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
-            Shop by Adventure
+            Featured Brands
           </div>
-          <h2 className="text-4xl font-bold text-charcoal-900 mb-4">Gear for Every Journey</h2>
+          <h2 className="text-4xl font-bold text-charcoal-900 mb-4">Discover Independent Makers</h2>
           <p className="text-lg text-charcoal-600 max-w-2xl mx-auto">
-            From weekend hikes to multi-day expeditions, find the perfect gear crafted by passionate makers.
+            Shop directly from passionate outdoor brands crafting gear with purpose, quality, and adventure in mind.
           </p>
         </div>
         
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
           {isLoading ? (
-            Array.from({ length: 10 }).map((_, index) => (
-              <div key={index} className="bg-white p-6 rounded-xl shadow-card animate-pulse">
-                <div className="h-16 bg-sand-200 rounded-lg mb-4"></div>
-                <div className="h-4 bg-sand-200 rounded w-3/4 mx-auto"></div>
+            Array.from({ length: 8 }).map((_, index) => (
+              <div key={index} className="bg-white rounded-xl shadow-card animate-pulse">
+                <div className="h-32 bg-sand-200 rounded-t-xl"></div>
+                <div className="p-6">
+                  <div className="h-6 bg-sand-200 rounded mb-2"></div>
+                  <div className="h-4 bg-sand-200 rounded w-3/4"></div>
+                </div>
               </div>
             ))
-          ) : (
-            topLevelCategories.slice(0, 10).map((category) => (
-              <button
-                key={category.id}
-                onClick={() => handleCategorySelect(category)}
-                className="group bg-white p-6 rounded-xl shadow-card border border-sand-200 hover:shadow-hover hover:border-forest-200 transition-all duration-300 hover:-translate-y-1"
+          ) : stores.length > 0 ? (
+            stores.slice(0, 8).map((store) => (
+              <Link
+                key={store.id}
+                to={`/shop/stores/${store.slug}`}
+                className="group bg-white rounded-xl shadow-card border border-sand-200 hover:shadow-hover hover:border-forest-200 transition-all duration-300 hover:-translate-y-1 overflow-hidden"
               >
-                <div className="flex items-center justify-center h-16 w-16 bg-forest-100 rounded-lg mb-4 mx-auto group-hover:bg-forest-200 transition-colors">
-                  <CategoryIcon category={category.name} className="h-8 w-8 text-forest-600" />
+                {/* Future Image Placeholder */}
+                <div className="aspect-square bg-sand-50 flex items-center justify-center">
+                  <div className="text-6xl font-black text-sand-200">
+                    {store.name.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
                 </div>
-                <h3 className="font-semibold text-charcoal-900 text-sm text-center group-hover:text-forest-700 transition-colors">
-                  {category.name}
-                </h3>
-              </button>
+                
+                {/* Brand Name */}
+                <div className="p-6 text-center">
+                  <h3 className="font-bold text-charcoal-900 text-lg group-hover:text-forest-700 transition-colors">
+                    {store.name}
+                  </h3>
+                </div>
+              </Link>
             ))
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <p className="text-charcoal-600">No brands available yet. Check back soon!</p>
+            </div>
           )}
         </div>
+        
+        {stores.length > 8 && (
+          <div className="text-center mt-12">
+            <Link
+              to="/shop"
+              className="inline-flex items-center px-6 py-3 border-2 border-forest-600 text-forest-600 font-semibold rounded-lg hover:bg-forest-600 hover:text-white transition-colors"
+            >
+              View All Brands
+              <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Brand Showcase Section */}
@@ -453,24 +478,24 @@ export default function HomePage() {
       </div>
 
       {/* Featured Products */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center bg-forest-100 text-forest-700 px-4 py-2 rounded-full text-sm font-semibold mb-6">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
+        <div className="text-center mb-8 sm:mb-10 lg:mb-12">
+          <div className="inline-flex items-center bg-forest-100 text-forest-700 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold mb-4 sm:mb-6">
+            <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l14 9-14 9V3z" />
             </svg>
             Editor's Choice
           </div>
-          <h2 className="text-4xl font-black text-charcoal-900 mb-4">Trail-Tested Favorites</h2>
-          <p className="text-xl text-charcoal-600 max-w-3xl mx-auto mb-8">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-charcoal-900 mb-3 sm:mb-4">Trail-Tested Favorites</h2>
+          <p className="text-base sm:text-lg lg:text-xl text-charcoal-600 max-w-3xl mx-auto mb-6 sm:mb-8">
             Gear that's earned its place in adventurers' packs through real-world testing in demanding conditions.
           </p>
           <Link 
             to="/shop?featured=true"
-            className="inline-flex items-center bg-forest-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-forest-700 transition-colors"
+            className="inline-flex items-center bg-forest-600 text-white px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-semibold hover:bg-forest-700 transition-colors text-sm sm:text-base"
           >
             View All Featured Gear
-            <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3 h-3 sm:w-4 sm:h-4 ml-1.5 sm:ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </Link>
@@ -479,7 +504,7 @@ export default function HomePage() {
         <ProductGrid 
           products={featuredProducts}
           isLoading={isLoadingProducts}
-          columns={4}
+          columns={2}
           showStore={true}
           emptyMessage="No featured products available yet. Check back soon for curated gear recommendations!"
         />
@@ -487,21 +512,21 @@ export default function HomePage() {
 
       {/* Newsletter & Community */}
       <div className="bg-gradient-to-r from-forest-600 via-forest-700 to-forest-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             <div>
-              <h2 className="text-3xl font-black text-white mb-4">
+              <h2 className="text-2xl sm:text-3xl font-black text-white mb-3 sm:mb-4">
                 Join the Adventure Community
               </h2>
-              <p className="text-xl text-forest-100 mb-8 leading-relaxed">
+              <p className="text-base sm:text-lg lg:text-xl text-forest-100 mb-6 sm:mb-8 leading-relaxed">
                 Get exclusive access to new gear drops, maker stories, and adventure tips from our community of passionate outdoor enthusiasts.
               </p>
               
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
                 <input
                   type="email"
                   placeholder="Enter your email"
-                  className="flex-1 px-4 py-3 rounded-lg text-charcoal-900 placeholder-charcoal-500 focus:outline-none focus:ring-2 focus:ring-white"
+                  className="flex-1 px-4 py-3 rounded-lg text-charcoal-900 placeholder-charcoal-500 focus:outline-none focus:ring-2 focus:ring-white text-base"
                 />
                 <button className="bg-white text-forest-700 px-6 py-3 rounded-lg font-semibold hover:bg-forest-50 transition-colors">
                   Join Community

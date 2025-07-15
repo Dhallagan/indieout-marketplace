@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 interface HeroContent {
   id?: string
@@ -21,7 +21,7 @@ class HeroService {
 
   // Public endpoint to get current hero content
   async getCurrentHeroContent(): Promise<HeroContent> {
-    const response = await fetch(`${API_BASE_URL}/hero-content/current`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/hero-content/current`, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -38,7 +38,7 @@ class HeroService {
 
   // Admin endpoint to get hero content for editing
   async getHeroContent(): Promise<HeroContent> {
-    const response = await fetch(`${API_BASE_URL}/hero-content`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/hero-content`, {
       headers: {
         'Content-Type': 'application/json',
         ...this.getAuthHeaders(),
@@ -56,7 +56,7 @@ class HeroService {
 
   // Admin endpoint to update hero content
   async updateHeroContent(heroData: HeroContent): Promise<HeroContent> {
-    const response = await fetch(`${API_BASE_URL}/hero-content`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/hero-content`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',

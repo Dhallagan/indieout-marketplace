@@ -82,8 +82,17 @@ Rails.application.configure do
   
   # Configure default URL options for controllers
   Rails.application.routes.default_url_options[:host] = 'localhost'
-  Rails.application.routes.default_url_options[:port] = 5000
+  Rails.application.routes.default_url_options[:port] = 3000
 
   # Raise error when a before_action's only/except options reference missing actions
   config.action_controller.raise_on_missing_callback_actions = true
+  
+  # Allow ngrok and localhost hosts
+  config.hosts.clear
+  config.hosts << "localhost"
+  config.hosts << "127.0.0.1"
+  config.hosts << "api"  # Docker service name
+  config.hosts << /[a-z0-9\-]+\.ngrok\.app/
+  config.hosts << /[a-z0-9\-]+\.ngrok-free\.app/
+  config.hosts << /[a-z0-9\-]+\.ngrok\.io/
 end

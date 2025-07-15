@@ -47,9 +47,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_06_25_010307) do
     t.string "created_by", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "page", default: "all"
     t.index ["is_active"], name: "index_banners_on_is_active"
-    t.index ["page"], name: "index_banners_on_page"
     t.index ["position"], name: "index_banners_on_position"
     t.index ["start_date", "end_date"], name: "index_banners_on_start_date_and_end_date"
   end

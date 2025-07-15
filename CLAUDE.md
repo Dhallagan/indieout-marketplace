@@ -11,6 +11,7 @@ This is a full-stack project with a **React/TypeScript frontend** and **Rails AP
 ## Development Commands
 
 ### Root Level Commands
+
 - `npm run dev` - Start both Rails API and React client in development mode
 - `npm run build` - Build React client for production
 - `npm start` - Start Rails API in production mode
@@ -18,11 +19,13 @@ This is a full-stack project with a **React/TypeScript frontend** and **Rails AP
 - `npm run generate:types` - Generate TypeScript types from Rails API
 
 ### Client Commands (React/Vite)
+
 - `cd client && npm run dev` - Start development server (port 3000)
 - `cd client && npm run build` - Build for production
 - `cd client && npm run preview` - Preview production build
 
 ### Rails API Commands
+
 - `cd api && rails server` - Start Rails API server (port 5000)
 - `cd api && rails console` - Open Rails console
 - `npm run db:create` - Create database
@@ -79,6 +82,7 @@ This is a full-stack project with a **React/TypeScript frontend** and **Rails AP
 ## Core Features Implemented
 
 ### Phase 1: Foundation ✅
+
 - Monorepo structure with React client and Rails API
 - TypeScript configuration with automated type generation from Rails
 - PostgreSQL database with comprehensive Rails schema
@@ -88,7 +92,9 @@ This is a full-stack project with a **React/TypeScript frontend** and **Rails AP
 - React app with routing and authentication context
 
 ### Database Schema
+
 The Rails models include:
+
 - **Users** with role enum and authentication fields (email verification, password reset)
 - **Stores** for seller management with verification status and metrics
 - **Categories** with self-referential hierarchical structure
@@ -99,6 +105,7 @@ The Rails models include:
 - **Addresses** for shipping (planned)
 
 ### Authentication System
+
 - User registration with email verification
 - Secure login with JWT tokens
 - Password reset functionality
@@ -108,6 +115,7 @@ The Rails models include:
 ## Current Status
 
 **Phase 1 Complete**: Basic authentication and user management system is fully functional with:
+
 - User registration/login pages
 - Protected routes
 - Role-based dashboards
@@ -122,7 +130,6 @@ The Rails models include:
    - Database URL (PostgreSQL)
    - JWT secret
    - SMTP settings for email
-   
 2. Install dependencies: `npm run install:all`
 3. Set up database: `cd server && npm run db:push`
 4. Start development: `npm run dev`
@@ -132,12 +139,14 @@ The Rails models include:
 **The Key Innovation**: This project solves the common problem of keeping frontend and backend types in sync using automated type generation:
 
 ### How It Works
+
 1. **Rails Serializers** define the API response structure using `JSONAPI::Serializer`
 2. **Type Generation Script** (`scripts/generate-types.js`) reads the serializer patterns and generates TypeScript interfaces
 3. **Frontend Services** use the generated types for type-safe API communication
 4. **Development Workflow**: Run `npm run generate:types` after changing Rails models/serializers
 
 ### Benefits
+
 - **Zero Type Drift**: Frontend types always match backend API responses
 - **Compile-Time Safety**: TypeScript catches API mismatches during development
 - **Developer Experience**: Auto-completion and IntelliSense for all API responses

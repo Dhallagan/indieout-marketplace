@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-// https://vitejs.dev/config/
+// Docker-specific configuration
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -13,31 +13,22 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
-    allowedHosts: [
-      'localhost',
-      '127.0.0.1',
-      '.ngrok.app',
-      '.ngrok-free.app'
-    ],
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://api:3000',
         changeOrigin: true,
         secure: false,
       },
       '/uploads': {
-        target: 'http://localhost:3000',
+        target: 'http://api:3000',
         changeOrigin: true,
         secure: false,
       },
       '/rails': {
-        target: 'http://localhost:3000',
+        target: 'http://api:3000',
         changeOrigin: true,
         secure: false,
       },
     },
-  },
-  define: {
-    'process.env.VITE_API_URL': JSON.stringify('http://localhost:3000'),
   },
 })

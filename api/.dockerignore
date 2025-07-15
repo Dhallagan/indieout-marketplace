@@ -1,62 +1,61 @@
-# Ignore version control
-.git
+# Ignore git repository
+.git/
 .gitignore
-.github
 
 # Ignore bundler config
 /.bundle
 
-# Ignore all default SQLite databases
-/db/*.sqlite3
-/db/*.sqlite3-*
-
-# Ignore all logfiles and tempfiles
+# Ignore all default log files
 /log/*
-/tmp/*
 !/log/.keep
-!/tmp/.keep
 
-# Ignore pidfiles, but keep the directory
-/tmp/pids/*
+# Ignore all temp files
+/tmp/*
+!/tmp/.keep
 !/tmp/pids/
 !/tmp/pids/.keep
 
-# Ignore storage (uploaded files in development)
-/storage/*
-!/storage/.keep
-
-# Ignore master key for decrypting credentials
-/config/master.key
-
-# Ignore test files
+# Ignore development/test files
 /spec
 /test
 .rspec
+.rubocop.yml
 
-# Ignore development files
-.env
-.env.local
-.env.*.local
-
-# Ignore node modules if any
+# Ignore node_modules
 /node_modules
 
 # Ignore yarn files
 yarn-error.log
-.yarn-integrity
 
-# Ignore Mac files
-.DS_Store
+# Ignore environment files
+.env*
+!.env.example
 
-# Ignore editor files
-.idea
-.vscode
-*.swp
-*.swo
-*~
+# Ignore storage (uploaded files)
+/storage/*
+!/storage/.keep
+
+# Ignore master key and credentials
+/config/master.key
+/config/credentials/*.key
 
 # Ignore coverage reports
 /coverage
 
-# Ignore fly.toml when building
-fly.toml
+# Ignore public assets - these are compiled in production
+/public/assets
+/public/packs
+/public/packs-test
+
+# Ignore documentation
+*.md
+README*
+docs/
+
+# Ignore OS generated files
+.DS_Store
+Thumbs.db
+
+# Ignore editor files
+.vscode/
+.idea/

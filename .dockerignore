@@ -1,0 +1,36 @@
+# Git
+.git
+.gitignore
+
+# Dependencies
+node_modules
+api/vendor/bundle
+api/tmp
+api/log
+api/storage
+
+# Build outputs
+client/dist
+client/build
+
+# Environment files
+.env*
+!.env.example
+
+# Development files
+.DS_Store
+*.swp
+*.swo
+.vscode
+.idea
+
+# Documentation
+*.md
+docs/
+
+# Test files
+api/spec
+api/test
+client/coverage
+*.test.*
+*.spec.*

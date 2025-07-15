@@ -1,5 +1,8 @@
 class ApplicationController < ActionController::API
   before_action :set_current_user
+  
+  rescue_from ActiveRecord::RecordNotFound, with: :not_found
+  rescue_from ActionController::RoutingError, with: :not_found
 
   protected
 
@@ -33,5 +36,17 @@ class ApplicationController < ActionController::API
     rescue StandardError => e
       Rails.logger.debug "JWT decode error: #{e.message}"
     end
+  end
+  
+  def not_found
+    render json: { 
+      success: false, 
+      error: 'Resource not found',
+      message: 'The requested resource could not be found'
+    }, status: :not_found
+  end
+  
+  def fallback_index_html
+    render file: Rails.root.join('public', 'index.html'), layout: false
   end
 end

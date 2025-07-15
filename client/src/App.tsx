@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import Layout from '@/components/Layout'
 import HomePage from '@/pages/HomePage'
@@ -26,6 +26,7 @@ import CheckoutPage from '@/pages/CheckoutPage'
 import CheckoutSuccessPage from '@/pages/CheckoutSuccessPage'
 import GuestOrderTrackingPage from '@/pages/GuestOrderTrackingPage'
 import SearchResultsPage from '@/pages/SearchResultsPage'
+import NotFoundPage from '@/pages/NotFoundPage'
 import ProtectedRoute from '@/components/ProtectedRoute'
 
 function App() {
@@ -156,6 +157,8 @@ function App() {
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/checkout/success/:orderId" element={<CheckoutSuccessPage />} />
             <Route path="/track-order" element={<GuestOrderTrackingPage />} />
+            <Route path="/404" element={<NotFoundPage />} />
+            <Route path="*" element={<Navigate to="/404" replace />} />
           </Routes>
         </Layout>
       } />

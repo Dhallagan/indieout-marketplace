@@ -46,9 +46,9 @@ export default function ProductCard({ product, showStore = true, size = 'medium'
   }
 
   const imageSizes = {
-    small: 'h-48',
-    medium: 'h-64', 
-    large: 'h-80'
+    small: 'h-32 sm:h-40 lg:h-48',
+    medium: 'h-40 sm:h-48 lg:h-64', 
+    large: 'h-48 sm:h-64 lg:h-80'
   }
 
   return (
@@ -79,7 +79,7 @@ export default function ProductCard({ product, showStore = true, size = 'medium'
         </div>
       </Link>
 
-      <div className="p-6">
+      <div className="p-3 sm:p-4 lg:p-6">
         {showStore && product.store && (
           <div className="flex items-center justify-between mb-4">
             <Link 
@@ -109,7 +109,7 @@ export default function ProductCard({ product, showStore = true, size = 'medium'
         )}
 
         <Link to={`/shop/products/${product.slug || product.id}`}>
-          <h3 className="font-bold text-lg text-charcoal-900 hover:text-forest-600 transition-colors mb-3 line-clamp-2 leading-tight">
+          <h3 className="font-bold text-sm sm:text-base lg:text-lg text-charcoal-900 hover:text-forest-600 transition-colors mb-2 sm:mb-3 line-clamp-2 leading-tight">
             {product.name}
           </h3>
         </Link>
@@ -123,7 +123,7 @@ export default function ProductCard({ product, showStore = true, size = 'medium'
         <div className="flex items-end justify-between">
           <div className="flex flex-col">
             <div className="flex items-baseline space-x-2 mb-1">
-              <span className="font-black text-xl text-charcoal-900">
+              <span className="font-black text-base sm:text-lg lg:text-xl text-charcoal-900">
                 ${Number(product.base_price).toFixed(2)}
               </span>
               {product.compare_at_price && Number(product.compare_at_price) > Number(product.base_price) && (

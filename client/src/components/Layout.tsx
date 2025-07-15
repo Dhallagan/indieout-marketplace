@@ -41,9 +41,27 @@ export default function Layout({ children }: LayoutProps) {
 
   // Get display categories (same logic as ShopPage)
   const topLevelCategories = categories.filter(cat => !cat.parent_id)
-  const displayCategories = topLevelCategories.length === 1 && topLevelCategories[0]?.children?.length 
-    ? topLevelCategories[0].children 
-    : topLevelCategories
+  let displayCategories: Category[] = []
+  
+  if (topLevelCategories.length === 1 && topLevelCategories[0]?.children?.length) {
+    // We have "Outdoor Gear" as the only top-level, so use its children
+    const outdoorGear = topLevelCategories[0]
+    
+    // For each child category, if it has subcategories (like Water Sports -> Rafting, Surfing),
+    // use the subcategories instead of the parent
+    outdoorGear.children.forEach(category => {
+      if (category.children && category.children.length > 0 && 
+          (category.slug === 'water-sports' || category.slug === 'winter-sports')) {
+        // Add the individual sports instead of the parent category
+        displayCategories.push(...category.children)
+      } else {
+        // Add the category as-is (like Hiking, Camping, etc.)
+        displayCategories.push(category)
+      }
+    })
+  } else {
+    displayCategories = topLevelCategories
+  }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -107,7 +125,17 @@ export default function Layout({ children }: LayoutProps) {
       <nav className="bg-white/95 backdrop-blur-sm border-b border-sand-200 relative z-40">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex justify-between h-20">
-            <div className="flex items-center space-x-12">
+            <div className="flex items-center space-x-4 lg:space-x-12">
+              {/* Mobile Menu Button - Left side on mobile */}
+              <button
+                onClick={() => setShowMobileMenu(!showMobileMenu)}
+                className="lg:hidden p-2 rounded-md text-charcoal-700 hover:text-forest-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+              
               {/* Logo */}
               <Link to="/" className="flex items-center space-x-3 group">
                 <img 
@@ -115,7 +143,7 @@ export default function Layout({ children }: LayoutProps) {
                   alt="IndieOut" 
                   className="h-10 w-auto group-hover:scale-105 transition-transform duration-200"
                 />
-                <span className="text-2xl font-black text-forest-700 tracking-tight group-hover:text-forest-800 transition-colors">
+                <span className="text-xl sm:text-2xl font-black text-forest-700 tracking-tight group-hover:text-forest-800 transition-colors">
                   IndieOut
                 </span>
               </Link>
@@ -143,7 +171,7 @@ export default function Layout({ children }: LayoutProps) {
               </div>
             </div>
 
-            <div className="flex items-center flex-1 space-x-6">
+            <div className="flex items-center flex-1 space-x-4 lg:space-x-6">
               {/* Search Bar */}
               <div className="hidden lg:block relative flex-1 max-w-2xl mx-8" ref={searchRef}>
                 <form onSubmit={handleSearch} className="relative">
@@ -391,23 +419,30 @@ export default function Layout({ children }: LayoutProps) {
                 )}
               </div>
 
-              {/* Mobile Menu Button */}
-              <button
-                onClick={() => setShowMobileMenu(!showMobileMenu)}
-                className="md:hidden p-2 rounded-md text-charcoal-700 hover:text-forest-600"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
             </div>
           </div>
         </div>
 
         {/* Mobile Menu */}
         {showMobileMenu && (
-          <div className="md:hidden border-t border-charcoal-200 bg-white">
+          <div className="lg:hidden border-t border-charcoal-200 bg-white">
             <div className="px-4 py-2 space-y-1">
+              {/* Mobile Search */}
+              <div className="px-3 py-3">
+                <form onSubmit={handleSearch} className="relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search gear..."
+                    className="w-full pl-10 pr-4 py-2 border border-sand-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-forest-500/30 focus:border-forest-400"
+                  />
+                  <svg className="absolute left-3 top-2.5 w-5 h-5 text-charcoal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </form>
+              </div>
+              
               <Link
                 to="/shop"
                 className="block px-3 py-2 rounded-md text-base font-medium text-charcoal-700 hover:text-forest-600 hover:bg-sand-50"

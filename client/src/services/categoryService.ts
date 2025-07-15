@@ -1,6 +1,6 @@
 import { Category, ApiResponse } from '@/types/api-generated'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
 class CategoryService {
   private getAuthHeaders() {
@@ -9,7 +9,7 @@ class CategoryService {
   }
 
   async getCategories(): Promise<Category[]> {
-    const response = await fetch(`${API_BASE_URL}/categories`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/categories`, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -25,7 +25,7 @@ class CategoryService {
   }
 
   async getCategory(id: string): Promise<Category> {
-    const response = await fetch(`${API_BASE_URL}/categories/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/categories/${id}`, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -41,7 +41,7 @@ class CategoryService {
   }
 
   async createCategory(categoryData: Partial<Category>): Promise<Category> {
-    const response = await fetch(`${API_BASE_URL}/categories`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/categories`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -60,7 +60,7 @@ class CategoryService {
   }
 
   async updateCategory(id: string, categoryData: Partial<Category>): Promise<Category> {
-    const response = await fetch(`${API_BASE_URL}/categories/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/categories/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -79,7 +79,7 @@ class CategoryService {
   }
 
   async deleteCategory(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/categories/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/categories/${id}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',

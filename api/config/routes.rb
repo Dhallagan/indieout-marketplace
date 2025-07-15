@@ -138,5 +138,13 @@ Rails.application.routes.draw do
       # Health check for API
       get :health, to: proc { [200, {}, [{ status: 'OK', timestamp: Time.current.iso8601 }.to_json]] }
     end
+    
+    # Catch all route for undefined API endpoints
+    match '*path', to: 'application#not_found', via: :all
+  end
+  
+  # Catch all route for non-API routes (let React handle them)
+  get '*path', to: 'application#fallback_index_html', constraints: ->(request) do
+    !request.xhr? && request.format.html?
   end
 end

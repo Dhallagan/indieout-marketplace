@@ -4,16 +4,9 @@
 
 puts "🌱 Seeding database..."
 
-# Helper method for generating AI product images
-def generate_ai_product_image(product_name, description, category, style_seed = nil)
-  # Try to generate AI image first, fallback to curated images
-  if ENV['OPENAI_API_KEY'].present?
-    puts "🎨 Generating AI image for: #{product_name}"
-    ai_image = AiImageService.generate_product_image(product_name, description, category)
-    return ai_image if ai_image.present?
-  end
-  
-  # Fallback to curated Unsplash images
+# Helper method for getting product images
+def get_product_image(product_name, description, category, style_seed = nil)
+  # Use curated Unsplash images
   puts "📷 Using curated image for: #{product_name}"
   case category
   when 'hiking'
@@ -43,6 +36,51 @@ def generate_ai_product_image(product_name, description, category, style_seed = 
       "https://images.unsplash.com/photo-1434725039720-aaad6dd32dfe?w=400&h=400&fit=crop"  # camping gear
     ]
     camping_images[(style_seed || rand(camping_images.length)) % camping_images.length]
+  when 'rafting', 'water_sports'
+    water_images = [
+      "https://images.unsplash.com/photo-1599207011416-863f6523a085?w=400&h=400&fit=crop", # rafting
+      "https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=400&h=400&fit=crop", # kayaking
+      "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&h=400&fit=crop", # paddles
+      "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=400&fit=crop", # life jackets
+      "https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=400&h=400&fit=crop"  # river gear
+    ]
+    water_images[(style_seed || rand(water_images.length)) % water_images.length]
+  when 'surfing'
+    surf_images = [
+      "https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=400&h=400&fit=crop", # surfboards
+      "https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=400&h=400&fit=crop", # wetsuit
+      "https://images.unsplash.com/photo-1502933691298-84fc14542831?w=400&h=400&fit=crop", # surf wax
+      "https://images.unsplash.com/photo-1531722569936-825d3dd91c15?w=400&h=400&fit=crop", # fins
+      "https://images.unsplash.com/photo-1459745930869-b3d0d72c3271?w=400&h=400&fit=crop"  # surf gear
+    ]
+    surf_images[(style_seed || rand(surf_images.length)) % surf_images.length]
+  when 'skiing', 'winter_sports'
+    ski_images = [
+      "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=400&h=400&fit=crop", # ski boots
+      "https://images.unsplash.com/photo-1605540436563-5bca919ae766?w=400&h=400&fit=crop", # skis
+      "https://images.unsplash.com/photo-1511885663737-eea53f6d6187?w=400&h=400&fit=crop", # ski poles
+      "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop", # goggles
+      "https://images.unsplash.com/photo-1491555103944-7c647fd857e6?w=400&h=400&fit=crop"  # ski gear
+    ]
+    ski_images[(style_seed || rand(ski_images.length)) % ski_images.length]
+  when 'diving'
+    diving_images = [
+      "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=400&fit=crop", # diving mask
+      "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&h=400&fit=crop", # fins
+      "https://images.unsplash.com/photo-1583212292454-1fe6229603b7?w=400&h=400&fit=crop", # wetsuit
+      "https://images.unsplash.com/photo-1544551763-92ab472cad5d?w=400&h=400&fit=crop", # diving gear
+      "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=400&h=400&fit=crop"  # underwater camera
+    ]
+    diving_images[(style_seed || rand(diving_images.length)) % diving_images.length]
+  when 'outdoor_art', 'art'
+    art_images = [
+      "https://images.unsplash.com/photo-1513519245088-0e12902e35ca?w=400&h=400&fit=crop", # nature prints
+      "https://images.unsplash.com/photo-1578321272176-b7bbc0679853?w=400&h=400&fit=crop", # handmade crafts
+      "https://images.unsplash.com/photo-1452860606245-08befc0ff44b?w=400&h=400&fit=crop", # wood carving
+      "https://images.unsplash.com/photo-1515541324332-7dd0c37426e0?w=400&h=400&fit=crop", # nature jewelry
+      "https://images.unsplash.com/photo-1524634126442-357e0eac3c14?w=400&h=400&fit=crop"  # trail maps
+    ]
+    art_images[(style_seed || rand(art_images.length)) % art_images.length]
   when 'store'
     store_images = [
       "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=200&h=200&fit=crop", # outdoor store
@@ -122,6 +160,79 @@ end
 sleeping_bags_cat = Category.find_or_create_by!(name: 'Sleeping Bags', parent: camping) do |category|
   category.slug = 'sleeping-bags'
   category.description = 'Sleeping bags for all seasons'
+end
+
+# Water Sports categories
+water_sports = Category.find_or_create_by!(name: 'Water Sports', parent: outdoor_gear) do |category|
+  category.slug = 'water-sports'
+  category.description = 'Gear for water-based adventures'
+end
+
+rafting_cat = Category.find_or_create_by!(name: 'Rafting', parent: water_sports) do |category|
+  category.slug = 'rafting'
+  category.description = 'Whitewater rafting and kayaking gear'
+end
+
+surfing_cat = Category.find_or_create_by!(name: 'Surfing', parent: water_sports) do |category|
+  category.slug = 'surfing'
+  category.description = 'Surfboards, wetsuits, and surf accessories'
+end
+
+diving_cat = Category.find_or_create_by!(name: 'Diving', parent: water_sports) do |category|
+  category.slug = 'diving'
+  category.description = 'Scuba and freediving equipment'
+end
+
+paddling_cat = Category.find_or_create_by!(name: 'Paddling', parent: water_sports) do |category|
+  category.slug = 'paddling'
+  category.description = 'SUP boards, canoes, and paddles'
+end
+
+# Winter Sports categories
+winter_sports = Category.find_or_create_by!(name: 'Winter Sports', parent: outdoor_gear) do |category|
+  category.slug = 'winter-sports'
+  category.description = 'Gear for snow and ice adventures'
+end
+
+skiing_cat = Category.find_or_create_by!(name: 'Skiing', parent: winter_sports) do |category|
+  category.slug = 'skiing'
+  category.description = 'Alpine and backcountry skiing equipment'
+end
+
+snowboarding_cat = Category.find_or_create_by!(name: 'Snowboarding', parent: winter_sports) do |category|
+  category.slug = 'snowboarding'
+  category.description = 'Snowboards, bindings, and accessories'
+end
+
+ice_climbing_cat = Category.find_or_create_by!(name: 'Ice Climbing', parent: winter_sports) do |category|
+  category.slug = 'ice-climbing'
+  category.description = 'Ice axes, crampons, and winter climbing gear'
+end
+
+# Outdoor Art & Crafts category
+outdoor_art = Category.find_or_create_by!(name: 'Outdoor Art & Crafts', parent: outdoor_gear) do |category|
+  category.slug = 'outdoor-art'
+  category.description = 'Adventure-inspired art and handmade crafts'
+end
+
+photography_cat = Category.find_or_create_by!(name: 'Photography', parent: outdoor_art) do |category|
+  category.slug = 'photography'
+  category.description = 'Nature photography prints and gear'
+end
+
+woodwork_cat = Category.find_or_create_by!(name: 'Woodwork', parent: outdoor_art) do |category|
+  category.slug = 'woodwork'
+  category.description = 'Hand-carved trail signs and camping crafts'
+end
+
+jewelry_cat = Category.find_or_create_by!(name: 'Jewelry', parent: outdoor_art) do |category|
+  category.slug = 'jewelry'
+  category.description = 'Nature-inspired jewelry and accessories'
+end
+
+maps_cat = Category.find_or_create_by!(name: 'Maps & Prints', parent: outdoor_art) do |category|
+  category.slug = 'maps-prints'
+  category.description = 'Trail maps, topographic prints, and posters'
 end
 
 puts "✅ Created #{Category.count} categories"
@@ -225,6 +336,78 @@ stores_data = [
       last_name: 'Morrison',
       email: 'david@ridgerunner.com'
     }
+  },
+  {
+    name: 'Tidal Force Gear',
+    slug: 'tidal-force-gear',
+    description: 'Premium surf and water sports equipment designed by professional athletes. From big wave boards to river rafting gear, we build equipment for those who push boundaries on the water.',
+    website: 'https://tidalforcegear.com',
+    specialty: 'surfing',
+    seller: {
+      first_name: 'Kai',
+      last_name: 'Nakamura',
+      email: 'kai@tidalforcegear.com'
+    }
+  },
+  {
+    name: 'Whitewater Works',
+    slug: 'whitewater-works',
+    description: 'Specialized rafting and kayaking gear built by river guides. We test our equipment on Class V rapids to ensure it performs when it matters most.',
+    website: 'https://whitewaterworks.com',
+    specialty: 'rafting',
+    seller: {
+      first_name: 'River',
+      last_name: 'Johnson',
+      email: 'river@whitewaterworks.com'
+    }
+  },
+  {
+    name: 'Powder Dreams Co.',
+    slug: 'powder-dreams-co',
+    description: 'Backcountry skiing and splitboarding gear for powder chasers. Designed in the Rockies, tested in Japan, and built for adventure anywhere snow falls.',
+    website: 'https://powderdreams.co',
+    specialty: 'skiing',
+    seller: {
+      first_name: 'Aspen',
+      last_name: 'Williams',
+      email: 'aspen@powderdreams.co'
+    }
+  },
+  {
+    name: 'Deep Blue Diving',
+    slug: 'deep-blue-diving',
+    description: 'Professional diving equipment and custom wetsuits. From tropical reefs to arctic expeditions, our gear is trusted by marine biologists and underwater photographers worldwide.',
+    website: 'https://deepbluediving.com',
+    specialty: 'diving',
+    seller: {
+      first_name: 'Marina',
+      last_name: 'Torres',
+      email: 'marina@deepbluediving.com'
+    }
+  },
+  {
+    name: 'Trail Canvas Studio',
+    slug: 'trail-canvas-studio',
+    description: 'Nature-inspired art and handcrafted outdoor decor. We create custom trail maps, topographic prints, and woodwork that brings the beauty of the outdoors into your home.',
+    website: 'https://trailcanvas.studio',
+    specialty: 'outdoor_art',
+    seller: {
+      first_name: 'Sierra',
+      last_name: 'Martinez',
+      email: 'sierra@trailcanvas.studio'
+    }
+  },
+  {
+    name: 'Mountain Muse Gallery',
+    slug: 'mountain-muse-gallery',
+    description: 'Photography prints and outdoor-themed jewelry. Each piece tells a story of adventure and connects you to the wild places that inspire us all.',
+    website: 'https://mountainmuse.gallery',
+    specialty: 'outdoor_art',
+    seller: {
+      first_name: 'Luna',
+      last_name: 'Anderson',
+      email: 'luna@mountainmuse.gallery'
+    }
   }
 ]
 
@@ -253,7 +436,7 @@ stores_data.each_with_index do |store_data, index|
     s.is_verified = true
     s.is_active = true
     s.commission_rate = 0.05
-    s.logo = generate_ai_product_image(store_data[:name], store_data[:description], 'store', index + 100)
+    s.logo = get_product_image(store_data[:name], store_data[:description], 'store', index + 100)
   end
   
   stores << { store: store, specialty: store_data[:specialty] }
@@ -513,14 +696,14 @@ products_data.each_with_index do |product_data, index|
     p.materials = product_data[:materials]
     p.status = :active
     p.is_featured = product_data[:is_featured] || false
-# Images will be created as ProductImage records after product creation
+    # Images will be created as ProductImage records after product creation
   end
   
   # Create ProductImage records
   image_urls = [
-    generate_ai_product_image(product_data[:name], product_data[:description], product_data[:specialty], index),
-    generate_ai_product_image(product_data[:name], product_data[:description], product_data[:specialty], index + 50),
-    generate_ai_product_image(product_data[:name], product_data[:description], product_data[:specialty], index + 100)
+    get_product_image(product_data[:name], product_data[:description], product_data[:specialty], index),
+    get_product_image(product_data[:name], product_data[:description], product_data[:specialty], index + 50),
+    get_product_image(product_data[:name], product_data[:description], product_data[:specialty], index + 100)
   ]
   
   image_urls.each_with_index do |image_url, img_index|
@@ -582,7 +765,7 @@ banners_data = [
     subtitle: 'Up to 40% Off Premium Gear',
     description: 'Gear up for your next big adventure with hand-picked equipment from independent outdoor makers.',
     cta_text: 'Shop Sale',
-    cta_url: 'https://indieout.com/shop?featured=true',
+    cta_url: '/shop?featured=true',
     background_color: '#0f766e',
     text_color: '#ffffff',
     position: 1,
@@ -593,7 +776,7 @@ banners_data = [
     subtitle: 'Handcrafted Climbing Gear',
     description: 'Discover the latest innovations in climbing technology, made by climbers for climbers.',
     cta_text: 'Explore Collection',
-    cta_url: 'https://indieout.com/stores/peak-forge',
+    cta_url: '/stores/peak-forge',
     background_color: '#1e40af',
     text_color: '#ffffff',
     position: 2,
@@ -623,9 +806,9 @@ hero = HeroContent.find_or_create_by!(title: 'Handcrafted gear for trail-worthy 
   h.subtitle = ''
   h.description = 'Connect with independent sellers creating durable, sustainable outdoor equipment for your next journey.'
   h.cta_primary_text = 'Explore the marketplace'
-  h.cta_primary_url = 'https://indieout.com/shop'
+  h.cta_primary_url = '/shop'
   h.cta_secondary_text = 'Start selling your gear'
-  h.cta_secondary_url = 'https://indieout.com/apply-to-sell'
+  h.cta_secondary_url = '/apply-to-sell'
   h.is_active = true
 end
 puts "🏠 Created default hero content: #{hero.title}"
