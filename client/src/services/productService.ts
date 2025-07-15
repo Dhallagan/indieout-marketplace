@@ -1,7 +1,7 @@
 import { Product, ApiResponse } from '@/types/api-generated'
 import { UploadResponse } from './uploadService'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
 interface ProductVariant {
   id?: string
@@ -65,7 +65,7 @@ class ProductService {
     if (filters?.page) params.append('page', filters.page.toString())
     if (filters?.per_page) params.append('per_page', filters.per_page.toString())
     
-    const response = await fetch(`${API_BASE_URL}/products?${params}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/products?${params}`, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -81,7 +81,7 @@ class ProductService {
   }
 
   async getProduct(id: string): Promise<Product> {
-    const response = await fetch(`${API_BASE_URL}/products/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/products/${id}`, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -100,7 +100,7 @@ class ProductService {
     const params = new URLSearchParams()
     if (status) params.append('status', status)
     
-    const response = await fetch(`${API_BASE_URL}/products/my_products?${params}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/products/my_products?${params}`, {
       headers: {
         'Content-Type': 'application/json',
         ...this.getAuthHeaders(),
@@ -125,7 +125,7 @@ class ProductService {
       )
     }
 
-    const response = await fetch(`${API_BASE_URL}/products`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/products`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -155,7 +155,7 @@ class ProductService {
       )
     }
 
-    const response = await fetch(`${API_BASE_URL}/products/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/products/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -177,7 +177,7 @@ class ProductService {
   }
 
   async deleteProduct(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/products/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/products/${id}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',

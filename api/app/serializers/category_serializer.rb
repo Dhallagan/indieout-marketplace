@@ -36,7 +36,7 @@ class CategorySerializer
   end
 
   attribute :has_children do |category|
-    category.has_children?
+    category.children.any?
   end
 
   attribute :product_count do |category|

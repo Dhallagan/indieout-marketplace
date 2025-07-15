@@ -4,22 +4,26 @@ class Api::V1::CategoriesController < ApplicationController
   before_action :set_category, only: [:show, :update, :destroy]
 
   def index
-    # Load top-level categories with their children pre-loaded
-    categories = Category.top_level
-                         .includes(children: [:children, :products])
-                         .includes(:products)
+    # Load categories with children only (no products)
+    categories = Category.top_level.includes(children: :children)
     
-    # Pre-calculate product counts to avoid N+1 queries
-    product_counts = Category.joins(:products).group(:category_id).count
+    # Get all product counts in one query
+    product_counts = Product.group(:category_id).count
     
-    # Attach product counts to categories
+    # Attach product counts to all categories
+    all_categories = []
     categories.each do |category|
+      all_categories << category
       category.instance_variable_set(:@products_count, product_counts[category.id] || 0)
-      if category.children.loaded?
+      
+      if category.children.any?
         category.children.each do |child|
+          all_categories << child
           child.instance_variable_set(:@products_count, product_counts[child.id] || 0)
-          if child.children.loaded?
+          
+          if child.children.any?
             child.children.each do |grandchild|
+              all_categories << grandchild
               grandchild.instance_variable_set(:@products_count, product_counts[grandchild.id] || 0)
             end
           end
