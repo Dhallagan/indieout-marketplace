@@ -50,25 +50,25 @@ class ImageUploader < Shrine
     end
   end
 
-  # Define derivatives (different sizes) with correct ImageProcessing syntax
+  # Define derivatives (different sizes) using Vips for better performance
   Attacher.derivatives do |original|
-    magick = ImageProcessing::MiniMagick.source(original)
+    vips = ImageProcessing::Vips.source(original)
     
     {
       # Thumbnail for admin listings
-      thumb: magick.resize_to_limit(150, 150).convert("webp").call,
+      thumb: vips.resize_to_limit(150, 150).convert("webp").call,
       
       # Medium size for product pages  
-      medium: magick.resize_to_limit(600, 600).convert("webp").call,
+      medium: vips.resize_to_limit(600, 600).convert("webp").call,
       
       # Large size for detailed views
-      large: magick.resize_to_limit(1200, 1200).convert("webp").call,
+      large: vips.resize_to_limit(1200, 1200).convert("webp").call,
       
       # Hero banner size (for hero content)
-      hero: magick.resize_to_fill(1920, 800).convert("webp").saver(quality: 85).call,
+      hero: vips.resize_to_fill(1920, 800).convert("webp").saver(quality: 85).call,
       
       # Mobile hero size
-      hero_mobile: magick.resize_to_fill(768, 600).convert("webp").saver(quality: 85).call
+      hero_mobile: vips.resize_to_fill(768, 600).convert("webp").saver(quality: 85).call
     }
   end
 
