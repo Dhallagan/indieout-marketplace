@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_06_25_010307) do
+ActiveRecord::Schema[7.1].define(version: 2025_07_15_201505) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -100,6 +100,8 @@ ActiveRecord::Schema[7.1].define(version: 2025_06_25_010307) do
     t.string "featured_collection_title"
     t.string "featured_collection_subtitle"
     t.string "featured_collection_image"
+    t.text "background_image_data"
+    t.text "featured_collection_image_data"
   end
 
   create_table "order_items", id: :string, force: :cascade do |t|

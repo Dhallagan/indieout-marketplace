@@ -11,7 +11,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 3001,
     host: true,
     allowedHosts: [
       'localhost',
@@ -36,8 +36,5 @@ export default defineConfig({
         secure: false,
       },
     },
-  },
-  define: {
-    'process.env.VITE_API_URL': JSON.stringify('http://localhost:3000'),
   },
 })

@@ -3,7 +3,10 @@ class Banner < ApplicationRecord
   validates :subtitle, length: { maximum: 150 }
   validates :description, length: { maximum: 500 }
   validates :cta_text, length: { maximum: 50 }
-  validates :cta_url, format: { with: URI::DEFAULT_PARSER.make_regexp(['http', 'https']) }, allow_blank: true
+  validates :cta_url, format: { 
+    with: %r{\A(/|https?://)[^\s]*\z}, 
+    message: 'must be a valid URL or path' 
+  }, allow_blank: true
   validates :background_color, format: { with: /\A#[0-9a-fA-F]{6}\z/ }, allow_blank: true
   validates :text_color, format: { with: /\A#[0-9a-fA-F]{6}\z/ }, allow_blank: true
   validates :position, presence: true, numericality: { greater_than_or_equal_to: 0 }

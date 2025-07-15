@@ -1,4 +1,7 @@
 class HeroContent < ApplicationRecord
+  include ImageUploader::Attachment(:background_image)
+  include ImageUploader::Attachment(:featured_collection_image)
+  
   validates :title, presence: true, length: { maximum: 200 }
   validates :subtitle, length: { maximum: 300 }
   validates :description, length: { maximum: 1000 }

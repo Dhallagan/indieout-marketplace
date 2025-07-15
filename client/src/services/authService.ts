@@ -1,6 +1,6 @@
 import { AuthResponse, User, UserRole } from '@/types/auth'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
 interface RegisterData {
   email: string
@@ -16,7 +16,7 @@ class AuthService {
   }
 
   async login(email: string, password: string): Promise<AuthResponse> {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -34,7 +34,7 @@ class AuthService {
   }
 
   async register(userData: RegisterData): Promise<AuthResponse> {
-    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -52,7 +52,7 @@ class AuthService {
   }
 
   async getCurrentUser(): Promise<User> {
-    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
       headers: {
         ...this.getAuthHeaders(),
       },
@@ -68,7 +68,7 @@ class AuthService {
   }
 
   async verifyEmail(token: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/auth/verify-email`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/verify_email`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -84,7 +84,7 @@ class AuthService {
   }
 
   async forgotPassword(email: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/forgot_password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -100,7 +100,7 @@ class AuthService {
   }
 
   async resetPassword(token: string, password: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/reset_password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -116,7 +116,7 @@ class AuthService {
   }
 
   async becomeSeller(): Promise<User> {
-    const response = await fetch(`${API_BASE_URL}/auth/become-seller`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/become_seller`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

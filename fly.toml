@@ -1,13 +1,13 @@
-app = "indieout-monorepo"
+app = "indieout"
 primary_region = "den"
 kill_signal = "SIGTERM"
 
 [build]
   dockerfile = "Dockerfile"
-  build-args = { VITE_API_URL = "https://indieout-monorepo.fly.dev" }
+  build-args = { VITE_API_URL = "https://indieout.fly.dev" }
 
-[deploy]
-  release_command = "cd /app/api && bundle exec rails db:migrate"
+# [deploy]
+#   release_command = "cd /app/api && bundle exec rails db:migrate"
 
 [env]
   PORT = "80"

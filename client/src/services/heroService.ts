@@ -55,14 +55,22 @@ class HeroService {
   }
 
   // Admin endpoint to update hero content
-  async updateHeroContent(heroData: HeroContent): Promise<HeroContent> {
+  async updateHeroContent(heroData: HeroContent | FormData): Promise<HeroContent> {
+    const isFormData = heroData instanceof FormData
+    
+    const headers: HeadersInit = {
+      ...this.getAuthHeaders(),
+    }
+    
+    // Only set Content-Type for JSON, not for FormData (browser will set boundary)
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json'
+    }
+    
     const response = await fetch(`${API_BASE_URL}/api/v1/hero-content`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...this.getAuthHeaders(),
-      },
-      body: JSON.stringify({ hero: heroData }),
+      headers,
+      body: isFormData ? heroData : JSON.stringify({ hero: heroData }),
     })
 
     const data = await response.json()
@@ -79,4 +87,4 @@ const heroService = new HeroService()
 
 export const getCurrentHeroContent = () => heroService.getCurrentHeroContent()
 export const getHeroContent = () => heroService.getHeroContent()
-export const updateHeroContent = (heroData: HeroContent) => heroService.updateHeroContent(heroData)
+export const updateHeroContent = (heroData: HeroContent | FormData) => heroService.updateHeroContent(heroData)

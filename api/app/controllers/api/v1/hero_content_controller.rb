@@ -17,6 +17,17 @@ class Api::V1::HeroContentController < ApplicationController
   def update
     hero = HeroContent.current || create_default_hero
     
+    # Handle file uploads
+    if params[:hero][:background_image_file].present?
+      hero.background_image = params[:hero][:background_image_file]
+      params[:hero].delete(:background_image_file)
+    end
+    
+    if params[:hero][:featured_collection_image_file].present?
+      hero.featured_collection_image = params[:hero][:featured_collection_image_file]
+      params[:hero].delete(:featured_collection_image_file)
+    end
+    
     if hero.update(hero_params)
       render json: {
         success: true,
@@ -54,7 +65,8 @@ class Api::V1::HeroContentController < ApplicationController
     params.require(:hero).permit(
       :title, :subtitle, :description, :cta_primary_text, :cta_primary_url,
       :cta_secondary_text, :cta_secondary_url, :background_image, :is_active,
-      :featured_collection_title, :featured_collection_subtitle, :featured_collection_image
+      :featured_collection_title, :featured_collection_subtitle, :featured_collection_image,
+      :background_image_file, :featured_collection_image_file
     )
   end
 
@@ -77,14 +89,32 @@ class Api::V1::HeroContentController < ApplicationController
       cta_primary_url: hero.cta_primary_url,
       cta_secondary_text: hero.cta_secondary_text,
       cta_secondary_url: hero.cta_secondary_url,
-      background_image: hero.background_image,
+      background_image: get_image_url(hero, :background_image),
+      background_image_hero: get_image_url(hero, :background_image, :hero),
+      background_image_mobile: get_image_url(hero, :background_image, :hero_mobile),
       is_active: hero.is_active,
       featured_collection_title: hero.featured_collection_title,
       featured_collection_subtitle: hero.featured_collection_subtitle,
-      featured_collection_image: hero.featured_collection_image,
+      featured_collection_image: get_image_url(hero, :featured_collection_image),
+      featured_collection_image_thumb: get_image_url(hero, :featured_collection_image, :thumb),
       created_at: hero.created_at,
       updated_at: hero.updated_at
     }
+  end
+
+  def get_image_url(hero, field, derivative = :original)
+    if hero.send("#{field}_data").present?
+      # Return Shrine URL for uploaded file
+      attacher = hero.send("#{field}_attacher")
+      if derivative == :original
+        attacher.url
+      else
+        attacher.url(derivative) if attacher.derivatives[derivative]
+      end
+    else
+      # Return the legacy URL string if no file uploaded
+      hero.send(field)
+    end
   end
 
   def create_default_hero

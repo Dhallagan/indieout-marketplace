@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getHeroContent, updateHeroContent } from '@/services/heroService'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Page from '@/components/admin/Page'
@@ -15,9 +15,12 @@ interface HeroContent {
   cta_secondary_text: string
   cta_secondary_url: string
   background_image?: string
+  background_image_hero?: string
+  background_image_mobile?: string
   featured_collection_title?: string
   featured_collection_subtitle?: string
   featured_collection_image?: string
+  featured_collection_image_thumb?: string
   is_active: boolean
 }
 
@@ -39,6 +42,14 @@ export default function HeroManagementPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [message, setMessage] = useState('')
+  
+  // File upload states
+  const [backgroundImageFile, setBackgroundImageFile] = useState<File | null>(null)
+  const [featuredImageFile, setFeaturedImageFile] = useState<File | null>(null)
+  
+  // File input refs
+  const backgroundImageRef = useRef<HTMLInputElement>(null)
+  const featuredImageRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadHeroContent()
@@ -62,8 +73,46 @@ export default function HeroManagementPage() {
     
     try {
       setIsSaving(true)
-      const updatedHero = await updateHeroContent(heroContent)
+      
+      // Create FormData to handle file uploads
+      const formData = new FormData()
+      
+      // Add text fields (excluding blob URLs and derived fields)
+      Object.entries(heroContent).forEach(([key, value]) => {
+        // Skip blob URLs, file fields, and derived image fields
+        if (
+          value !== null && 
+          value !== undefined && 
+          !String(value).startsWith('blob:') &&
+          !key.endsWith('_hero') &&
+          !key.endsWith('_mobile') &&
+          !key.endsWith('_thumb')
+        ) {
+          formData.append(`hero[${key}]`, String(value))
+        }
+      })
+      
+      // Add file uploads if present
+      if (backgroundImageFile) {
+        formData.append('hero[background_image_file]', backgroundImageFile)
+        // Clear the URL field when uploading a file
+        formData.delete('hero[background_image]')
+      }
+      if (featuredImageFile) {
+        formData.append('hero[featured_collection_image_file]', featuredImageFile)
+        // Clear the URL field when uploading a file
+        formData.delete('hero[featured_collection_image]')
+      }
+      
+      const updatedHero = await updateHeroContent(formData)
       setHeroContent(updatedHero)
+      
+      // Clear file inputs after successful upload
+      setBackgroundImageFile(null)
+      setFeaturedImageFile(null)
+      if (backgroundImageRef.current) backgroundImageRef.current.value = ''
+      if (featuredImageRef.current) featuredImageRef.current.value = ''
+      
       setMessage('Hero content updated successfully!')
       setTimeout(() => setMessage(''), 3000)
     } catch (error) {
@@ -81,6 +130,25 @@ export default function HeroManagementPage() {
       ...prev,
       [field]: e.target.value
     }))
+  }
+  
+  const handleFileChange = (type: 'background' | 'featured') => (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (type === 'background') {
+        setBackgroundImageFile(file)
+        // Create preview URL
+        const previewUrl = URL.createObjectURL(file)
+        setHeroContent(prev => ({ ...prev, background_image: previewUrl }))
+      } else {
+        setFeaturedImageFile(file)
+        // Create preview URL
+        const previewUrl = URL.createObjectURL(file)
+        setHeroContent(prev => ({ ...prev, featured_collection_image: previewUrl }))
+      }
+    }
   }
 
   if (isLoading) {
@@ -223,15 +291,51 @@ export default function HeroManagementPage() {
               {/* Background Image */}
               <div>
                 <label className="block text-sm font-bold text-charcoal-700 mb-2">
-                  Background Image URL (optional)
+                  Background Image
                 </label>
-                <input
-                  type="url"
-                  value={heroContent.background_image || ''}
-                  onChange={handleChange('background_image')}
-                  className="w-full border border-sand-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="https://example.com/hero-background.jpg"
-                />
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-charcoal-600 mb-1">
+                      Upload Image File
+                    </label>
+                    <input
+                      ref={backgroundImageRef}
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      onChange={handleFileChange('background')}
+                      className="w-full border border-sand-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    {backgroundImageFile && (
+                      <p className="text-sm text-forest-600 mt-1">
+                        Selected: {backgroundImageFile.name}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-center text-sm text-charcoal-500">— OR —</div>
+                  <div>
+                    <label className="block text-xs font-medium text-charcoal-600 mb-1">
+                      Image URL
+                    </label>
+                    <input
+                      type="url"
+                      value={heroContent.background_image || ''}
+                      onChange={handleChange('background_image')}
+                      className="w-full border border-sand-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="https://example.com/hero-background.jpg"
+                      disabled={!!backgroundImageFile}
+                    />
+                  </div>
+                  {(heroContent.background_image || heroContent.background_image_hero) && (
+                    <div className="mt-2">
+                      <p className="text-sm font-medium text-charcoal-700 mb-1">Preview:</p>
+                      <img 
+                        src={heroContent.background_image_hero || heroContent.background_image} 
+                        alt="Background preview" 
+                        className="w-full max-w-md h-48 object-cover rounded-lg border border-sand-200"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Featured Collection Section */}
@@ -264,18 +368,54 @@ export default function HeroManagementPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-charcoal-700 mb-2">
-                      Collection Background Image URL
+                      Collection Background Image
                     </label>
-                    <input
-                      type="url"
-                      value={heroContent.featured_collection_image || ''}
-                      onChange={handleChange('featured_collection_image')}
-                      className="w-full border border-sand-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="https://example.com/collection-image.jpg"
-                    />
-                    <p className="text-sm text-charcoal-500 mt-1">
-                      This image will be used as the background for the featured collection card
-                    </p>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-medium text-charcoal-600 mb-1">
+                          Upload Image File
+                        </label>
+                        <input
+                          ref={featuredImageRef}
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/webp"
+                          onChange={handleFileChange('featured')}
+                          className="w-full border border-sand-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        {featuredImageFile && (
+                          <p className="text-sm text-forest-600 mt-1">
+                            Selected: {featuredImageFile.name}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-center text-sm text-charcoal-500">— OR —</div>
+                      <div>
+                        <label className="block text-xs font-medium text-charcoal-600 mb-1">
+                          Image URL
+                        </label>
+                        <input
+                          type="url"
+                          value={heroContent.featured_collection_image || ''}
+                          onChange={handleChange('featured_collection_image')}
+                          className="w-full border border-sand-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="https://example.com/collection-image.jpg"
+                          disabled={!!featuredImageFile}
+                        />
+                      </div>
+                      {(heroContent.featured_collection_image || heroContent.featured_collection_image_thumb) && (
+                        <div className="mt-2">
+                          <p className="text-sm font-medium text-charcoal-700 mb-1">Preview:</p>
+                          <img 
+                            src={heroContent.featured_collection_image_thumb || heroContent.featured_collection_image} 
+                            alt="Collection preview" 
+                            className="w-48 h-48 object-cover rounded-lg border border-sand-200"
+                          />
+                        </div>
+                      )}
+                      <p className="text-sm text-charcoal-500 mt-1">
+                        This image will be used as the background for the featured collection card
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
