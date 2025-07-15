@@ -7,8 +7,14 @@ class HeroContent < ApplicationRecord
   validates :description, length: { maximum: 1000 }
   validates :cta_primary_text, length: { maximum: 50 }
   validates :cta_secondary_text, length: { maximum: 50 }
-  validates :cta_primary_url, format: { with: URI::DEFAULT_PARSER.make_regexp(['http', 'https']) }, allow_blank: true
-  validates :cta_secondary_url, format: { with: URI::DEFAULT_PARSER.make_regexp(['http', 'https']) }, allow_blank: true
+  validates :cta_primary_url, format: { 
+    with: %r{\A(/|https?://)[^\s]*\z}, 
+    message: 'must be a valid URL or path' 
+  }, allow_blank: true
+  validates :cta_secondary_url, format: { 
+    with: %r{\A(/|https?://)[^\s]*\z}, 
+    message: 'must be a valid URL or path' 
+  }, allow_blank: true
 
   # Callbacks
   before_create :set_cuid_id
