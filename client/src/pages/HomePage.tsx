@@ -17,9 +17,12 @@ interface HeroContent {
   cta_secondary_text: string
   cta_secondary_url: string
   background_image?: string
+  background_image_hero?: string
+  background_image_mobile?: string
   featured_collection_title?: string
   featured_collection_subtitle?: string
   featured_collection_image?: string
+  featured_collection_image_thumb?: string
 }
 
 export default function HomePage() {
@@ -44,9 +47,14 @@ export default function HomePage() {
         try {
           const heroData = await getCurrentHeroContent()
           console.log('Hero content loaded:', heroData) // Debug log
+          console.log('Featured collection image URL:', heroData.featured_collection_image) // Debug image URL
           setHeroContent(heroData)
         } catch (error) {
           console.error('Failed to load hero content:', error)
+          console.error('Error details:', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            error
+          })
           // Use fallback hero content
           setHeroContent({
             title: "Handcrafted gear for trail-worthy adventures",
@@ -158,7 +166,7 @@ export default function HomePage() {
               <div 
                 className="h-96 bg-gradient-to-br from-forest-600 to-forest-800 rounded-2xl relative overflow-hidden shadow-2xl"
                 style={heroContent?.featured_collection_image ? {
-                  backgroundImage: `url("${heroContent.featured_collection_image}")`,
+                  backgroundImage: `url(${heroContent.featured_collection_image})`,
                   backgroundSize: 'cover',
                   backgroundPosition: 'center',
                   backgroundRepeat: 'no-repeat'

@@ -16,9 +16,7 @@ RUN npm ci
 # Copy frontend source
 COPY client/ /app/client/
 
-# Build frontend with production API URL
-ARG VITE_API_URL=https://indieout.fly.dev
-ENV VITE_API_URL=$VITE_API_URL
+# Build frontend (API calls will be relative, proxied by nginx)
 RUN npm run build
 
 # Stage 2: Build Rails API
