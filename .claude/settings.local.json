@@ -21,7 +21,8 @@
       "Bash(fly deploy:*)",
       "Bash(fly status:*)",
       "Bash(fly logs:*)",
-      "Bash(fly storage update:*)"
+      "Bash(fly storage update:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": []
   }
