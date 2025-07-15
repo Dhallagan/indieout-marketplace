@@ -28,6 +28,11 @@ class Api::V1::HeroContentController < ApplicationController
       params[:hero].delete(:featured_collection_image_file)
     end
     
+    # Remove existing image URLs from params - Shrine will preserve them automatically
+    # Only update images when new files are uploaded
+    params[:hero].delete(:background_image)
+    params[:hero].delete(:featured_collection_image)
+    
     if hero.update(hero_params)
       render json: {
         success: true,
@@ -64,9 +69,8 @@ class Api::V1::HeroContentController < ApplicationController
   def hero_params
     params.require(:hero).permit(
       :title, :subtitle, :description, :cta_primary_text, :cta_primary_url,
-      :cta_secondary_text, :cta_secondary_url, :background_image, :is_active,
-      :featured_collection_title, :featured_collection_subtitle, :featured_collection_image,
-      :background_image_file, :featured_collection_image_file
+      :cta_secondary_text, :cta_secondary_url, :is_active,
+      :featured_collection_title, :featured_collection_subtitle
     )
   end
 

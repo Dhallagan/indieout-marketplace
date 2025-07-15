@@ -2,15 +2,21 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import ProductGrid from '@/components/ProductGrid'
 import CategoryIcon from '@/components/CategoryIcon'
+import CategorySkeleton from '@/components/CategorySkeleton'
 import { getProducts } from '@/services/productService'
 import { getCategories } from '@/services/categoryService'
 import { Product, Category } from '@/types/api-generated'
+import { categoryCache } from '@/utils/categoryCache'
 
 export default function ShopPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [products, setProducts] = useState<Product[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
+  const [categories, setCategories] = useState<Category[]>(() => {
+    // Initialize with cached categories for instant display
+    return categoryCache.get() || []
+  })
   const [isLoading, setIsLoading] = useState(true)
+  const [categoriesLoading, setCategoriesLoading] = useState(true)
   const [totalProducts, setTotalProducts] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '')
@@ -52,10 +58,28 @@ export default function ShopPage() {
       if (storeFilter) filters.store_id = storeFilter
       if (sortBy) filters.sort_by = sortBy
       
-      const [productsResult, categoriesData] = await Promise.all([
-        getProducts(filters),
-        getCategories()
-      ])
+      // Load categories separately if not cached
+      if (categories.length === 0) {
+        setCategoriesLoading(true)
+        getCategories().then(categoriesData => {
+          setCategories(categoriesData)
+          categoryCache.set(categoriesData)
+          setCategoriesLoading(false)
+        }).catch(() => {
+          setCategoriesLoading(false)
+        })
+      } else {
+        setCategoriesLoading(false)
+        // Refresh cache in background
+        getCategories().then(categoriesData => {
+          setCategories(categoriesData)
+          categoryCache.set(categoriesData)
+        }).catch(() => {
+          // Ignore errors for background refresh
+        })
+      }
+      
+      const productsResult = await getProducts(filters)
       
       let filteredProducts = productsResult.products
       
@@ -83,7 +107,6 @@ export default function ShopPage() {
       }
       
       setProducts(filteredProducts)
-      setCategories(categoriesData)
       setTotalProducts(productsResult.meta?.total_count || filteredProducts.length)
     } catch (error) {
       console.error('Failed to load shop data:', error)
@@ -201,15 +224,8 @@ export default function ShopPage() {
   } else if (topLevelCategories.length > 0) {
     displayCategories = topLevelCategories
   } else {
-    // Fallback to common outdoor categories if no categories are loaded
-    displayCategories = [
-      { id: 'hiking', name: 'Hiking & Backpacking', slug: 'hiking' },
-      { id: 'camping', name: 'Camping & Shelters', slug: 'camping' },
-      { id: 'climbing', name: 'Climbing & Mountaineering', slug: 'climbing' },
-      { id: 'apparel', name: 'Outdoor Apparel', slug: 'apparel' },
-      { id: 'footwear', name: 'Footwear', slug: 'footwear' },
-      { id: 'accessories', name: 'Accessories', slug: 'accessories' },
-    ] as Category[]
+    // No categories loaded yet - will show loading state
+    displayCategories = []
   }
 
   return (
@@ -308,18 +324,21 @@ export default function ShopPage() {
               {/* Categories Filter */}
               <div className="mb-8">
                 <h4 className="text-xs font-black text-charcoal-500 uppercase tracking-wider mb-4">Browse by Type</h4>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => handleCategoryFilter(null)}
-                    className={`w-full text-left px-4 py-3 rounded-full text-sm font-semibold transition-all ${
-                      !categoryFilter 
-                        ? 'bg-forest-600 text-white shadow-md transform scale-105' 
-                        : 'text-charcoal-600 hover:bg-sand-50 border border-sand-200'
-                    }`}
-                  >
-                    All Gear
-                  </button>
-                  {displayCategories.map((category) => {
+                {categoriesLoading && categories.length === 0 ? (
+                  <CategorySkeleton />
+                ) : (
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => handleCategoryFilter(null)}
+                      className={`w-full text-left px-4 py-3 rounded-full text-sm font-semibold transition-all ${
+                        !categoryFilter 
+                          ? 'bg-forest-600 text-white shadow-md transform scale-105' 
+                          : 'text-charcoal-600 hover:bg-sand-50 border border-sand-200'
+                      }`}
+                    >
+                      All Gear
+                    </button>
+                    {displayCategories.map((category) => {
                     // Check if this category has children and shouldn't show the subcategory UI
                     const showSubcategories = category.children && category.children.length > 0 && 
                       category.slug !== 'water-sports' && category.slug !== 'winter-sports'
@@ -363,7 +382,8 @@ export default function ShopPage() {
                       </div>
                     )
                   })}
-                </div>
+                  </div>
+                )}
               </div>
 
               {/* Price Filter */}
@@ -591,18 +611,21 @@ export default function ShopPage() {
               {/* Categories Filter */}
               <div className="mb-8">
                 <h4 className="text-xs font-black text-charcoal-500 uppercase tracking-wider mb-4">Browse by Type</h4>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => handleCategoryFilter(null)}
-                    className={`w-full text-left px-4 py-3 rounded-full text-sm font-semibold transition-all ${
-                      !categoryFilter 
-                        ? 'bg-forest-600 text-white shadow-md' 
-                        : 'text-charcoal-600 hover:bg-sand-50 border border-sand-200'
-                    }`}
-                  >
-                    All Gear
-                  </button>
-                  {displayCategories.map((category) => {
+                {categoriesLoading && categories.length === 0 ? (
+                  <CategorySkeleton />
+                ) : (
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => handleCategoryFilter(null)}
+                      className={`w-full text-left px-4 py-3 rounded-full text-sm font-semibold transition-all ${
+                        !categoryFilter 
+                          ? 'bg-forest-600 text-white shadow-md' 
+                          : 'text-charcoal-600 hover:bg-sand-50 border border-sand-200'
+                      }`}
+                    >
+                      All Gear
+                    </button>
+                    {displayCategories.map((category) => {
                     // Check if this category has children and shouldn't show the subcategory UI
                     const showSubcategories = category.children && category.children.length > 0 && 
                       category.slug !== 'water-sports' && category.slug !== 'winter-sports'
@@ -646,7 +669,8 @@ export default function ShopPage() {
                       </div>
                     )
                   })}
-                </div>
+                  </div>
+                )}
               </div>
 
               {/* Featured Filter */}
