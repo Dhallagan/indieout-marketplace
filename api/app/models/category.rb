@@ -15,6 +15,11 @@ class Category < ApplicationRecord
   # Scopes
   scope :top_level, -> { where(parent_id: nil) }
   scope :with_children, -> { includes(:children) }
+  scope :with_product_counts, -> {
+    left_joins(:products)
+      .group('categories.id')
+      .select('categories.*, COUNT(DISTINCT products.id) as products_count')
+  }
 
   # Instance methods
   def top_level?

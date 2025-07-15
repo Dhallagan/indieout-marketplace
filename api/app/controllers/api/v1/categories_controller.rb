@@ -4,7 +4,29 @@ class Api::V1::CategoriesController < ApplicationController
   before_action :set_category, only: [:show, :update, :destroy]
 
   def index
-    categories = Category.top_level.with_children.includes(children: :children)
+    # Load top-level categories with their children pre-loaded
+    categories = Category.top_level
+                         .includes(children: [:children, :products])
+                         .includes(:products)
+    
+    # Pre-calculate product counts to avoid N+1 queries
+    product_counts = Category.joins(:products).group(:category_id).count
+    
+    # Attach product counts to categories
+    categories.each do |category|
+      category.instance_variable_set(:@products_count, product_counts[category.id] || 0)
+      if category.children.loaded?
+        category.children.each do |child|
+          child.instance_variable_set(:@products_count, product_counts[child.id] || 0)
+          if child.children.loaded?
+            child.children.each do |grandchild|
+              grandchild.instance_variable_set(:@products_count, product_counts[grandchild.id] || 0)
+            end
+          end
+        end
+      end
+    end
+    
     render json: {
       success: true,
       data: {

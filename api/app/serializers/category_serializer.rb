@@ -40,6 +40,12 @@ class CategorySerializer
   end
 
   attribute :product_count do |category|
-    category.products.count
+    if category.instance_variable_defined?(:@products_count)
+      category.instance_variable_get(:@products_count)
+    elsif category.respond_to?(:products_count)
+      category.products_count
+    else
+      category.products.count
+    end
   end
 end
