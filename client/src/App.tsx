@@ -9,6 +9,9 @@ import CategoryManagementPage from '@/pages/CategoryManagementPage'
 import BannerManagementPage from '@/pages/admin/BannerManagementPage'
 import HeroManagementPage from '@/pages/admin/HeroManagementPage'
 import SellersManagementPage from '@/pages/admin/SellersManagementPage'
+import AdminDashboardPage from '@/pages/admin/AdminDashboardPage'
+import UsersManagementPage from '@/pages/admin/UsersManagementPage'
+import ProductsOversightPage from '@/pages/admin/ProductsOversightPage'
 import StoreSetupPage from '@/pages/StoreSetupPage'
 import SellerApplicationPage from '@/pages/SellerApplicationPage'
 import ProductManagementPage from '@/pages/ProductManagementPage'
@@ -76,10 +79,34 @@ function App() {
         }
       />
       <Route
+        path="/admin/dashboard"
+        element={
+          <ProtectedRoute>
+            <AdminDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin/sellers"
         element={
           <ProtectedRoute>
             <SellersManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/users"
+        element={
+          <ProtectedRoute>
+            <UsersManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/products"
+        element={
+          <ProtectedRoute>
+            <ProductsOversightPage />
           </ProtectedRoute>
         }
       />
