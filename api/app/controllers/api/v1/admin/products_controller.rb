@@ -60,7 +60,7 @@ class Api::V1::Admin::ProductsController < ApplicationController
       id: product.id,
       name: product.name,
       slug: product.slug,
-      price: product.price,
+      price: product.base_price,
       inventory: product.inventory,
       status: product.status,
       is_featured: product.is_featured?,
