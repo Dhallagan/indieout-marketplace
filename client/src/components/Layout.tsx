@@ -5,6 +5,7 @@ import { useCart } from '@/contexts/CartContext'
 import { UserRole } from '@/types/auth'
 import { getCategories } from '@/services/categoryService'
 import { getProducts } from '@/services/productService'
+import { exitImpersonation } from '@/services/authService'
 import { Category, Product } from '@/types/api-generated'
 import { getProductImageUrl } from '@/utils/imageHelpers'
 
@@ -13,7 +14,7 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const { user, logout, isAuthenticated, hasRole } = useAuth()
+  const { user, logout, isAuthenticated, hasRole, setAuthData } = useAuth()
   const { cart } = useCart()
   const navigate = useNavigate()
   const [categories, setCategories] = useState<Category[]>([])
@@ -69,6 +70,16 @@ export default function Layout({ children }: LayoutProps) {
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
       setShowSearchDropdown(false)
       setSearchQuery('')
+    }
+  }
+
+  const handleExitImpersonation = async () => {
+    try {
+      const authResponse = await exitImpersonation()
+      setAuthData(authResponse.token, authResponse.user)
+      navigate('/admin/sellers')
+    } catch (error) {
+      console.error('Failed to exit impersonation:', error)
     }
   }
 
@@ -312,88 +323,141 @@ export default function Layout({ children }: LayoutProps) {
                         <div className="px-4 py-2 border-b border-charcoal-200">
                           <div className="text-sm font-medium text-charcoal-900">{user?.first_name} {user?.last_name}</div>
                           <div className="text-xs text-charcoal-500">{user?.email}</div>
+                          {user?.is_impersonating && (
+                            <div className="mt-1 text-xs text-amber-600 font-medium">🎭 Impersonating</div>
+                          )}
                         </div>
                         
-                        {/* Customer Functions */}
-                        <div className="px-4 py-2">
-                          <div className="text-xs font-semibold text-charcoal-500 uppercase tracking-wider mb-2">
-                            {hasRole(UserRole.SELLER_ADMIN) ? 'Personal' : 'Shopping'}
-                          </div>
-                          <Link
-                            to="/dashboard?tab=purchases"
-                            className="block px-3 py-2 text-sm text-charcoal-700 hover:bg-sand-50 rounded-md"
-                            onClick={() => setShowUserDropdown(false)}
-                          >
-                            My Orders
-                          </Link>
-                          <Link
-                            to="/wishlist"
-                            className="block px-3 py-2 text-sm text-charcoal-700 hover:bg-sand-50 rounded-md"
-                            onClick={() => setShowUserDropdown(false)}
-                          >
-                            Wishlist
-                          </Link>
-                        </div>
-                        
-                        {/* Seller Functions */}
-                        {hasRole(UserRole.SELLER_ADMIN) ? (
-                          <div className="px-4 py-2 border-t border-charcoal-200">
-                            <Link
-                              to="/seller/dashboard"
-                              className="block px-3 py-2 text-sm text-forest-600 hover:bg-forest-50 rounded-md font-medium"
-                              onClick={() => setShowUserDropdown(false)}
+                        {/* Impersonation Exit */}
+                        {user?.is_impersonating && (
+                          <div className="px-4 py-2 border-b border-charcoal-200">
+                            <button
+                              onClick={() => {
+                                handleExitImpersonation()
+                                setShowUserDropdown(false)
+                              }}
+                              className="block w-full px-3 py-2 text-sm text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-md font-medium text-left"
                             >
-                              🏪 Go to My Store
-                            </Link>
-                          </div>
-                        ) : (
-                          <div className="px-4 py-2 border-t border-charcoal-200">
-                            <Link
-                              to="/apply-to-sell"
-                              className="block px-3 py-2 text-sm text-forest-600 hover:bg-forest-50 rounded-md font-medium"
-                              onClick={() => setShowUserDropdown(false)}
-                            >
-                              ⚡ Start Selling
-                            </Link>
+                              🔙 Exit Impersonation
+                            </button>
                           </div>
                         )}
                         
-                        {/* Admin Functions */}
-                        {hasRole(UserRole.SYSTEM_ADMIN) && (
-                          <div className="px-4 py-2 border-t border-charcoal-200">
+                        {/* Admin Functions - Show admin menu if system admin and not seller */}
+                        {hasRole(UserRole.SYSTEM_ADMIN) && !hasRole(UserRole.SELLER_ADMIN) ? (
+                          <div className="px-4 py-2">
                             <div className="text-xs font-semibold text-charcoal-500 uppercase tracking-wider mb-2">
-                              Admin
+                              Administration
                             </div>
+                            <Link
+                              to="/admin/dashboard"
+                              className="block px-3 py-2 text-sm text-charcoal-700 hover:bg-sand-50 rounded-md"
+                              onClick={() => setShowUserDropdown(false)}
+                            >
+                              📊 Dashboard
+                            </Link>
+                            <Link
+                              to="/admin/sellers"
+                              className="block px-3 py-2 text-sm text-charcoal-700 hover:bg-sand-50 rounded-md"
+                              onClick={() => setShowUserDropdown(false)}
+                            >
+                              🏪 Manage Sellers
+                            </Link>
+                            <Link
+                              to="/admin/users"
+                              className="block px-3 py-2 text-sm text-charcoal-700 hover:bg-sand-50 rounded-md"
+                              onClick={() => setShowUserDropdown(false)}
+                            >
+                              👥 Manage Users
+                            </Link>
                             <Link
                               to="/admin/categories"
                               className="block px-3 py-2 text-sm text-charcoal-700 hover:bg-sand-50 rounded-md"
                               onClick={() => setShowUserDropdown(false)}
                             >
-                              Manage Categories
+                              📁 Manage Categories
                             </Link>
                             <Link
                               to="/admin/banners"
                               className="block px-3 py-2 text-sm text-charcoal-700 hover:bg-sand-50 rounded-md"
                               onClick={() => setShowUserDropdown(false)}
                             >
-                              Manage Banners
+                              🖼️ Manage Banners
+                            </Link>
+                            <Link
+                              to="/admin/hero"
+                              className="block px-3 py-2 text-sm text-charcoal-700 hover:bg-sand-50 rounded-md"
+                              onClick={() => setShowUserDropdown(false)}
+                            >
+                              🎨 Hero Content
+                            </Link>
+                          </div>
+                        ) : (
+                          <>
+                            {/* Customer Functions */}
+                            <div className="px-4 py-2">
+                              <div className="text-xs font-semibold text-charcoal-500 uppercase tracking-wider mb-2">
+                                {hasRole(UserRole.SELLER_ADMIN) ? 'Personal' : 'Shopping'}
+                              </div>
+                              <Link
+                                to="/dashboard?tab=purchases"
+                                className="block px-3 py-2 text-sm text-charcoal-700 hover:bg-sand-50 rounded-md"
+                                onClick={() => setShowUserDropdown(false)}
+                              >
+                                My Orders
+                              </Link>
+                              <Link
+                                to="/wishlist"
+                                className="block px-3 py-2 text-sm text-charcoal-700 hover:bg-sand-50 rounded-md"
+                                onClick={() => setShowUserDropdown(false)}
+                              >
+                                Wishlist
+                              </Link>
+                            </div>
+                            
+                            {/* Seller Functions */}
+                            {hasRole(UserRole.SELLER_ADMIN) && (
+                              <div className="px-4 py-2 border-t border-charcoal-200">
+                                <Link
+                                  to="/seller/dashboard"
+                                  className="block px-3 py-2 text-sm text-forest-600 hover:bg-forest-50 rounded-md font-medium"
+                                  onClick={() => setShowUserDropdown(false)}
+                                >
+                                  🏪 Go to My Store
+                                </Link>
+                              </div>
+                            )}
+                            
+                            {/* Start Selling for non-sellers */}
+                            {!hasRole(UserRole.SELLER_ADMIN) && !hasRole(UserRole.SYSTEM_ADMIN) && (
+                              <div className="px-4 py-2 border-t border-charcoal-200">
+                                <Link
+                                  to="/apply-to-sell"
+                                  className="block px-3 py-2 text-sm text-forest-600 hover:bg-forest-50 rounded-md font-medium"
+                                  onClick={() => setShowUserDropdown(false)}
+                                >
+                                  ⚡ Start Selling
+                                </Link>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        
+                        {/* Account Settings - Always show unless pure admin */}
+                        {(!hasRole(UserRole.SYSTEM_ADMIN) || hasRole(UserRole.SELLER_ADMIN)) && (
+                          <div className="px-4 py-2 border-t border-charcoal-200">
+                            <div className="text-xs font-semibold text-charcoal-500 uppercase tracking-wider mb-2">
+                              Account
+                            </div>
+                            <Link
+                              to="/profile"
+                              className="block px-3 py-2 text-sm text-charcoal-700 hover:bg-sand-50 rounded-md"
+                              onClick={() => setShowUserDropdown(false)}
+                            >
+                              Profile Settings
                             </Link>
                           </div>
                         )}
-                        
-                        {/* Account Settings */}
-                        <div className="px-4 py-2 border-t border-charcoal-200">
-                          <div className="text-xs font-semibold text-charcoal-500 uppercase tracking-wider mb-2">
-                            Account
-                          </div>
-                          <Link
-                            to="/profile"
-                            className="block px-3 py-2 text-sm text-charcoal-700 hover:bg-sand-50 rounded-md"
-                            onClick={() => setShowUserDropdown(false)}
-                          >
-                            Profile Settings
-                          </Link>
-                        </div>
                         
                         <div className="border-t border-charcoal-200 mt-2">
                           <button

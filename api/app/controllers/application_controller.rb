@@ -27,8 +27,8 @@ class ApplicationController < ActionController::API
     return unless token
 
     begin
-      decoded_token = JwtService.decode(token)
-      user = User.find_by(id: decoded_token['user_id'])
+      @decoded_token = JwtService.decode(token)
+      user = User.find_by(id: @decoded_token['user_id'])
       
       if user&.email_verified?
         @current_user = user

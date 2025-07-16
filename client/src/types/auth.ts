@@ -22,6 +22,8 @@ export interface User {
     isVerified: boolean
     isActive: boolean
   }
+  is_impersonating?: boolean
+  impersonator_id?: string
 }
 
 export interface AuthResponse {

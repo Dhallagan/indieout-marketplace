@@ -43,10 +43,18 @@ class Api::V1::AuthController < ApplicationController
   end
 
   def me
+    user_data = UserSerializer.new(current_user).serializable_hash[:data][:attributes]
+    
+    # Add impersonation info if present
+    if @decoded_token&.dig('impersonator_id')
+      user_data[:is_impersonating] = true
+      user_data[:impersonator_id] = @decoded_token['impersonator_id']
+    end
+    
     render json: {
       success: true,
       data: {
-        user: UserSerializer.new(current_user).serializable_hash[:data][:attributes]
+        user: user_data
       }
     }
   end
@@ -138,15 +146,51 @@ class Api::V1::AuthController < ApplicationController
       return
     end
 
-    # Generate token for the target user
-    token = JwtService.encode(user_id: target_user.id)
+    # Generate token for the target user with impersonation info
+    token = JwtService.encode(
+      user_id: target_user.id,
+      impersonator_id: current_user.id
+    )
     
     render json: {
       success: true,
       data: {
         user: UserSerializer.new(target_user).serializable_hash[:data][:attributes],
         token: token,
-        message: "Now impersonating #{target_user.email}"
+        message: "Now impersonating #{target_user.email}",
+        is_impersonating: true,
+        impersonator_id: current_user.id
+      }
+    }
+  end
+
+  # Exit impersonation and return to admin account
+  def exit_impersonation
+    # Check if current session is an impersonation
+    impersonator_id = @decoded_token&.dig(:impersonator_id)
+    
+    unless impersonator_id
+      render json: { success: false, error: 'Not currently impersonating' }, status: :bad_request
+      return
+    end
+
+    # Load the original admin user
+    admin_user = User.find_by(id: impersonator_id)
+    
+    unless admin_user
+      render json: { success: false, error: 'Original admin user not found' }, status: :not_found
+      return
+    end
+
+    # Generate new token for the admin user
+    token = JwtService.encode(user_id: admin_user.id)
+    
+    render json: {
+      success: true,
+      data: {
+        user: UserSerializer.new(admin_user).serializable_hash[:data][:attributes],
+        token: token,
+        message: "Returned to admin account"
       }
     }
   end

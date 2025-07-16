@@ -150,6 +150,24 @@ class AuthService {
 
     return data.data
   }
+
+  async exitImpersonation(): Promise<AuthResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/exit_impersonation`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to exit impersonation')
+    }
+
+    return data.data
+  }
 }
 
 const authService = new AuthService()
@@ -162,5 +180,6 @@ export const forgotPassword = (email: string) => authService.forgotPassword(emai
 export const resetPassword = (token: string, password: string) => authService.resetPassword(token, password)
 export const becomeSeller = () => authService.becomeSeller()
 export const impersonate = (userId: string) => authService.impersonate(userId)
+export const exitImpersonation = () => authService.exitImpersonation()
 
 export type { RegisterData }

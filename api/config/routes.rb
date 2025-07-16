@@ -16,6 +16,7 @@ Rails.application.routes.draw do
         post :reset_password, to: 'auth#reset_password'
         post :become_seller, to: 'auth#become_seller'
         post 'impersonate/:user_id', to: 'auth#impersonate'
+        post :exit_impersonation, to: 'auth#exit_impersonation'
       end
 
       # Profile management
