@@ -1,5 +1,5 @@
 class Api::V1::AuthController < ApplicationController
-  before_action :authenticate_user!, only: [:me, :become_seller]
+  before_action :authenticate_user!, only: [:me, :become_seller, :impersonate]
 
   def register
     user = User.new(user_params)
@@ -122,6 +122,33 @@ class Api::V1::AuthController < ApplicationController
         error: 'User is already a seller or admin'
       }, status: :unprocessable_entity
     end
+  end
+
+  # System admin only - impersonate another user
+  def impersonate
+    unless current_user&.system_admin?
+      render json: { success: false, error: 'Admin access required' }, status: :forbidden
+      return
+    end
+
+    target_user = User.find_by(id: params[:user_id])
+    
+    unless target_user
+      render json: { success: false, error: 'User not found' }, status: :not_found
+      return
+    end
+
+    # Generate token for the target user
+    token = JwtService.encode(user_id: target_user.id)
+    
+    render json: {
+      success: true,
+      data: {
+        user: UserSerializer.new(target_user).serializable_hash[:data][:attributes],
+        token: token,
+        message: "Now impersonating #{target_user.email}"
+      }
+    }
   end
 
   private

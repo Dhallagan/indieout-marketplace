@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import AdminLayout from '@/components/admin/AdminLayout'
 import Page from '@/components/admin/Page'
 import Card from '@/components/admin/Card'
 import Button from '@/components/admin/Button'
 import { getAllSellers, approveSeller, rejectSeller, toggleSellerStatus, AdminSeller } from '@/services/adminService'
+import { impersonate } from '@/services/authService'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function SellersManagementPage() {
+  const navigate = useNavigate()
+  const { login: authLogin } = useAuth()
   const [sellers, setSellers] = useState<AdminSeller[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'verified' | 'rejected'>('all')
@@ -70,6 +75,23 @@ export default function SellersManagementPage() {
       setProcessingIds(prev => {
         const newSet = new Set(prev)
         newSet.delete(sellerId)
+        return newSet
+      })
+    }
+  }
+
+  const handleImpersonate = async (userId: string) => {
+    try {
+      setProcessingIds(prev => new Set(prev).add(userId))
+      const authResponse = await impersonate(userId)
+      authLogin(authResponse.token, authResponse.user)
+      navigate('/seller/dashboard')
+    } catch (error) {
+      console.error('Failed to impersonate user:', error)
+    } finally {
+      setProcessingIds(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(userId)
         return newSet
       })
     }
@@ -241,6 +263,15 @@ export default function SellersManagementPage() {
                       onClick={() => window.open(`/shop/stores/${seller.slug}`, '_blank')}
                     >
                       View Store
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="small"
+                      onClick={() => handleImpersonate(seller.user.id)}
+                      disabled={processingIds.has(seller.user.id)}
+                    >
+                      {processingIds.has(seller.user.id) ? 'Impersonating...' : 'Impersonate'}
                     </Button>
                   </div>
                 </div>

@@ -132,6 +132,24 @@ class AuthService {
 
     return data.data.user
   }
+
+  async impersonate(userId: string): Promise<AuthResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/impersonate/${userId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to impersonate user')
+    }
+
+    return data.data
+  }
 }
 
 const authService = new AuthService()
@@ -143,5 +161,6 @@ export const verifyEmail = (token: string) => authService.verifyEmail(token)
 export const forgotPassword = (email: string) => authService.forgotPassword(email)
 export const resetPassword = (token: string, password: string) => authService.resetPassword(token, password)
 export const becomeSeller = () => authService.becomeSeller()
+export const impersonate = (userId: string) => authService.impersonate(userId)
 
 export type { RegisterData }
