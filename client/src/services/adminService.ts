@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
 // Helper function to make authenticated API calls
 const apiCall = async (endpoint: string, options: RequestInit = {}) => {
@@ -33,7 +33,7 @@ export interface DashboardStats {
 }
 
 export const getDashboardStats = async (): Promise<DashboardStats> => {
-  const response = await apiCall('/admin/dashboard/stats')
+  const response = await apiCall('/api/v1/admin/dashboard/stats')
   return response.data.stats
 }
 
@@ -63,19 +63,19 @@ export interface AdminSeller {
 }
 
 export const getAllSellers = async (): Promise<AdminSeller[]> => {
-  const response = await apiCall('/admin/sellers')
+  const response = await apiCall('/api/v1/admin/sellers')
   return response.data.sellers
 }
 
 export const approveSeller = async (sellerId: string): Promise<AdminSeller> => {
-  const response = await apiCall(`/admin/sellers/${sellerId}/approve`, {
+  const response = await apiCall(`/api/v1/admin/sellers/${sellerId}/approve`, {
     method: 'PATCH'
   })
   return response.data.seller
 }
 
 export const rejectSeller = async (sellerId: string, reason?: string): Promise<AdminSeller> => {
-  const response = await apiCall(`/admin/sellers/${sellerId}/reject`, {
+  const response = await apiCall(`/api/v1/admin/sellers/${sellerId}/reject`, {
     method: 'PATCH',
     body: JSON.stringify({ reason })
   })
@@ -83,7 +83,7 @@ export const rejectSeller = async (sellerId: string, reason?: string): Promise<A
 }
 
 export const toggleSellerStatus = async (sellerId: string): Promise<AdminSeller> => {
-  const response = await apiCall(`/admin/sellers/${sellerId}/toggle-status`, {
+  const response = await apiCall(`/api/v1/admin/sellers/${sellerId}/toggle-status`, {
     method: 'PATCH'
   })
   return response.data.seller
@@ -108,19 +108,19 @@ export interface AdminUser {
 }
 
 export const getAllUsers = async (): Promise<AdminUser[]> => {
-  const response = await apiCall('/admin/users')
+  const response = await apiCall('/api/v1/admin/users')
   return response.data.users
 }
 
 export const toggleUserStatus = async (userId: string): Promise<AdminUser> => {
-  const response = await apiCall(`/admin/users/${userId}/toggle-status`, {
+  const response = await apiCall(`/api/v1/admin/users/${userId}/toggle-status`, {
     method: 'PATCH'
   })
   return response.data.user
 }
 
 export const changeUserRole = async (userId: string, role: string): Promise<AdminUser> => {
-  const response = await apiCall(`/admin/users/${userId}/role`, {
+  const response = await apiCall(`/api/v1/admin/users/${userId}/role`, {
     method: 'PATCH',
     body: JSON.stringify({ role })
   })
@@ -149,19 +149,19 @@ export interface AdminProduct {
 }
 
 export const getAllProducts = async (): Promise<AdminProduct[]> => {
-  const response = await apiCall('/admin/products')
+  const response = await apiCall('/api/v1/admin/products')
   return response.data.products
 }
 
 export const toggleProductFeatured = async (productId: string): Promise<AdminProduct> => {
-  const response = await apiCall(`/admin/products/${productId}/toggle-featured`, {
+  const response = await apiCall(`/api/v1/admin/products/${productId}/toggle-featured`, {
     method: 'PATCH'
   })
   return response.data.product
 }
 
 export const updateProductStatus = async (productId: string, status: string): Promise<AdminProduct> => {
-  const response = await apiCall(`/admin/products/${productId}/status`, {
+  const response = await apiCall(`/api/v1/admin/products/${productId}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status })
   })
