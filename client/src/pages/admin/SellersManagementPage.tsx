@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext'
 
 export default function SellersManagementPage() {
   const navigate = useNavigate()
-  const { login: authLogin } = useAuth()
+  const { setAuthData } = useAuth()
   const [sellers, setSellers] = useState<AdminSeller[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'verified' | 'rejected'>('all')
@@ -84,7 +84,7 @@ export default function SellersManagementPage() {
     try {
       setProcessingIds(prev => new Set(prev).add(userId))
       const authResponse = await impersonate(userId)
-      authLogin(authResponse.token, authResponse.user)
+      setAuthData(authResponse.token, authResponse.user)
       navigate('/seller/dashboard')
     } catch (error) {
       console.error('Failed to impersonate user:', error)

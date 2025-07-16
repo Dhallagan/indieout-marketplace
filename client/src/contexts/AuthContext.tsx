@@ -9,6 +9,7 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<void>
   logout: () => void
   setUser: (user: User) => void
+  setAuthData: (token: string, user: User) => void
   isAuthenticated: boolean
   hasRole: (role: UserRole) => boolean
 }
@@ -60,6 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
+  const setAuthData = (token: string, user: User) => {
+    localStorage.setItem('token', token)
+    setUser(user)
+  }
+
   const hasRole = (role: UserRole) => user?.role === role
 
   const value = {
@@ -69,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     register,
     logout,
     setUser,
+    setAuthData,
     isAuthenticated: !!user,
     hasRole,
   }
