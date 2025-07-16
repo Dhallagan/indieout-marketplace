@@ -16,17 +16,18 @@ class ProductImage < ApplicationRecord
   def image_url(size: :medium)
     return nil unless image.present?
     
+    # Generate presigned URL with expiration for S3/Tigris
     url = case size.to_sym
     when :thumb
-      image(:thumb)&.url
+      image(:thumb)&.url(expires_in: 7.days.to_i)
     when :medium
-      image(:medium)&.url
+      image(:medium)&.url(expires_in: 7.days.to_i)
     when :large
-      image(:large)&.url
+      image(:large)&.url(expires_in: 7.days.to_i)
     when :original
-      image&.url
+      image&.url(expires_in: 7.days.to_i)
     else
-      image(:medium)&.url # Default to medium
+      image(:medium)&.url(expires_in: 7.days.to_i) # Default to medium
     end
     
     # Ensure URL is absolute

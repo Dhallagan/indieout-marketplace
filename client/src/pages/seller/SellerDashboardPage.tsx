@@ -317,7 +317,7 @@ export default function SellerDashboardPage() {
                     </svg>
                   </Link>
                   
-                  <Link to={`/stores/${user.store.slug || user.store.id}`} className="group flex items-center justify-between p-4 rounded-xl border border-clay-200/60 bg-gradient-to-r from-clay-25 to-clay-50 hover:from-clay-50 hover:to-clay-75 transition-all duration-200 shadow-sm">
+                  <Link to={`/shop/stores/${user.store.slug || user.store.id}`} className="group flex items-center justify-between p-4 rounded-xl border border-clay-200/60 bg-gradient-to-r from-clay-25 to-clay-50 hover:from-clay-50 hover:to-clay-75 transition-all duration-200 shadow-sm">
                     <div className="flex items-center space-x-4">
                       <div className="w-12 h-12 bg-gradient-to-br from-clay-600 to-clay-700 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
                         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

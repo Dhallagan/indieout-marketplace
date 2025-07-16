@@ -4,25 +4,8 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import Page from '@/components/admin/Page'
 import Card from '@/components/admin/Card'
 import Button from '@/components/admin/Button'
-
-interface HeroContent {
-  id?: string
-  title: string
-  subtitle?: string
-  description: string
-  cta_primary_text: string
-  cta_primary_url: string
-  cta_secondary_text: string
-  cta_secondary_url: string
-  background_image?: string
-  background_image_hero?: string
-  background_image_mobile?: string
-  featured_collection_title?: string
-  featured_collection_subtitle?: string
-  featured_collection_image?: string
-  featured_collection_image_thumb?: string
-  is_active: boolean
-}
+import HeroSection from '@/components/HeroSection'
+import { HeroContent } from '@/types/hero'
 
 export default function HeroManagementPage() {
   const [heroContent, setHeroContent] = useState<HeroContent>({
@@ -440,67 +423,8 @@ export default function HeroManagementPage() {
         {/* Preview */}
         <Card sectioned className="mt-8">
           <h2 className="text-xl font-bold text-charcoal-900 mb-6">Preview</h2>
-          <div className="bg-gradient-to-br from-sand-25 via-white to-sand-100 rounded-xl p-8" 
-               style={heroContent.background_image ? { 
-                 backgroundImage: `url(${heroContent.background_image})`,
-                 backgroundSize: 'cover',
-                 backgroundPosition: 'center'
-               } : {}}>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              <div className="max-w-2xl">
-                <h1 className="text-4xl lg:text-5xl font-bold text-charcoal-900 mb-4">
-                  {heroContent.title || 'Your headline here'}
-                </h1>
-                {heroContent.subtitle && (
-                  <h2 className="text-xl text-charcoal-700 mb-4 font-semibold">
-                    {heroContent.subtitle}
-                  </h2>
-                )}
-                <p className="text-lg text-charcoal-600 mb-8">
-                  {heroContent.description || 'Your description here'}
-                </p>
-                <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                  {heroContent.cta_primary_text && (
-                    <button className="bg-forest-600 text-white px-6 py-3 rounded-lg font-medium">
-                      {heroContent.cta_primary_text}
-                    </button>
-                  )}
-                  {heroContent.cta_secondary_text && (
-                    <button className="border border-forest-600 text-forest-600 px-6 py-3 rounded-lg font-medium">
-                      {heroContent.cta_secondary_text}
-                    </button>
-                  )}
-                </div>
-              </div>
-              
-              {/* Featured Collection Card Preview */}
-              <div className="relative">
-                <div 
-                  className="bg-gradient-to-br from-sand-200 to-sand-300 rounded-2xl p-8 h-80 flex items-center justify-center"
-                  style={heroContent.featured_collection_image ? {
-                    backgroundImage: `url(${heroContent.featured_collection_image})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center'
-                  } : {}}
-                >
-                  <div className="text-center relative z-10">
-                    <span className={`text-sm font-medium mb-2 block ${
-                      heroContent.featured_collection_image ? 'text-white' : 'text-forest-700'
-                    }`}>
-                      {heroContent.featured_collection_title || 'FEATURED COLLECTION'}
-                    </span>
-                    <h3 className={`text-2xl font-bold ${
-                      heroContent.featured_collection_image ? 'text-white' : 'text-forest-900'
-                    }`}>
-                      {heroContent.featured_collection_subtitle || 'Desert Trail Essentials'}
-                    </h3>
-                  </div>
-                  {heroContent.featured_collection_image && (
-                    <div className="absolute inset-0 bg-black/30 rounded-2xl"></div>
-                  )}
-                </div>
-              </div>
-            </div>
+          <div className="rounded-xl overflow-hidden shadow-lg">
+            <HeroSection heroContent={heroContent} isPreview={true} />
           </div>
         </Card>
       </Page>

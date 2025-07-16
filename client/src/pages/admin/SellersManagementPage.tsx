@@ -262,7 +262,7 @@ export default function SellersManagementPage() {
                       size="small"
                       onClick={() => window.open(`/shop/stores/${seller.slug}`, '_blank')}
                     >
-                      View Store
+                      View Marketplace
                     </Button>
 
                     <Button

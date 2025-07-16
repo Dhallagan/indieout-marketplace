@@ -476,15 +476,17 @@ export default function ShopPage() {
             {/* Filter Tags & Results Header */}
             <div className="mb-8">
               {/* Active Filter Tags */}
-              {(categoryFilter || featuredFilter) && (
+              {(categoryFilter || featuredFilter || minPrice || maxPrice || selectedBrands.length > 0) && (
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                   <span className="text-sm font-medium text-charcoal-600">Active filters:</span>
                   {categoryFilter && (
                     <span className="inline-flex items-center bg-forest-100 text-forest-800 px-3 py-1 rounded-full text-sm font-medium">
-                      {currentCategory?.name}
+                      <span className="text-xs mr-1">Category:</span>
+                      <span className="font-semibold">{currentCategory?.name}</span>
                       <button
                         onClick={() => handleCategoryFilter(null)}
                         className="ml-2 hover:text-forest-900"
+                        title="Remove filter"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -509,6 +511,47 @@ export default function ShopPage() {
                       </button>
                     </span>
                   )}
+                  {(minPrice || maxPrice) && (
+                    <span className="inline-flex items-center bg-forest-100 text-forest-800 px-3 py-1 rounded-full text-sm font-medium">
+                      Price: ${minPrice || '0'} - ${maxPrice || '∞'}
+                      <button
+                        onClick={() => {
+                          setMinPrice('')
+                          setMaxPrice('')
+                          const newParams = new URLSearchParams(searchParams)
+                          newParams.delete('minPrice')
+                          newParams.delete('maxPrice')
+                          setSearchParams(newParams)
+                        }}
+                        className="ml-2 hover:text-forest-900"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </span>
+                  )}
+                  {selectedBrands.map(brand => (
+                    <span key={brand} className="inline-flex items-center bg-forest-100 text-forest-800 px-3 py-1 rounded-full text-sm font-medium">
+                      <span className="text-xs mr-1">Brand:</span>
+                      <span className="font-semibold">{brand}</span>
+                      <button
+                        onClick={() => handleBrandFilter(brand, false)}
+                        className="ml-2 hover:text-forest-900"
+                        title="Remove filter"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </span>
+                  ))}
+                  <button
+                    onClick={clearFilters}
+                    className="text-sm font-medium text-forest-600 hover:text-forest-700 underline"
+                  >
+                    Clear all
+                  </button>
                 </div>
               )}
               
@@ -563,6 +606,20 @@ export default function ShopPage() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
         </svg>
         <span className="font-semibold">Filter</span>
+        {(() => {
+          const activeFilterCount = [
+            categoryFilter ? 1 : 0,
+            featuredFilter ? 1 : 0,
+            (minPrice || maxPrice) ? 1 : 0,
+            selectedBrands.length
+          ].reduce((a, b) => a + b, 0);
+          
+          return activeFilterCount > 0 ? (
+            <span className="absolute -top-1 -right-1 bg-clay-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+              {activeFilterCount}
+            </span>
+          ) : null;
+        })()}
       </button>
 
       {/* Mobile Filter Overlay */}

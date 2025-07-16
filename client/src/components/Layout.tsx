@@ -256,17 +256,6 @@ export default function Layout({ children }: LayoutProps) {
 
               {/* Desktop Navigation Actions */}
               <div className="hidden md:flex items-center space-x-4">
-                {/* Wishlist */}
-                <Link
-                  to="/wishlist"
-                  className="relative p-2 text-charcoal-600 hover:text-forest-600 transition-colors group"
-                  title="Wishlist"
-                >
-                  <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
-                </Link>
-
                 {/* Shopping Cart */}
                 <Link
                   to="/cart"
@@ -392,13 +381,6 @@ export default function Layout({ children }: LayoutProps) {
                                 onClick={() => setShowUserDropdown(false)}
                               >
                                 My Orders
-                              </Link>
-                              <Link
-                                to="/wishlist"
-                                className="block px-3 py-2 text-sm text-charcoal-700 hover:bg-sand-50 rounded-md"
-                                onClick={() => setShowUserDropdown(false)}
-                              >
-                                Wishlist
                               </Link>
                             </div>
                             
@@ -591,7 +573,7 @@ export default function Layout({ children }: LayoutProps) {
       </nav>
 
       {/* Secondary Navigation - Categories */}
-      <div className="bg-white border-b border-sand-200">
+      <div className="hidden lg:block bg-white border-b border-sand-200">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center space-x-8 overflow-x-auto scrollbar-hide">

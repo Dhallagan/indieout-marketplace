@@ -1,37 +1,58 @@
 require "shrine"
 require "shrine/storage/s3"
 require "shrine/storage/file_system"
+require "image_processing/vips"
 
-# Always use S3-compatible storage (Tigris on Fly.io) for all environments
-s3_options = {
-  access_key_id:     ENV.fetch("AWS_ACCESS_KEY_ID"),
-  secret_access_key: ENV.fetch("AWS_SECRET_ACCESS_KEY"),
-  endpoint:          ENV.fetch("AWS_ENDPOINT_URL_S3", "https://fly.storage.tigris.dev"),
-  region:            ENV.fetch("AWS_REGION", "auto"),
-  bucket:            ENV.fetch("BUCKET_NAME"),
-  force_path_style:  true # Required for S3-compatible services
-}
+# Check if S3 credentials are available
+if ENV["AWS_ACCESS_KEY_ID"] && ENV["AWS_SECRET_ACCESS_KEY"] && ENV["BUCKET_NAME"]
+  # Use S3-compatible storage (Tigris on Fly.io) when credentials are available
+  s3_options = {
+    access_key_id:     ENV["AWS_ACCESS_KEY_ID"],
+    secret_access_key: ENV["AWS_SECRET_ACCESS_KEY"],
+    endpoint:          ENV.fetch("AWS_ENDPOINT_URL_S3", "https://fly.storage.tigris.dev"),
+    region:            ENV.fetch("AWS_REGION", "auto"),
+    bucket:            ENV["BUCKET_NAME"],
+    force_path_style:  true # Required for S3-compatible services
+  }
+else
+  # Fallback to local file storage when S3 credentials are not available
+  Rails.logger.warn "S3 credentials not found. Using local file storage for uploads."
+  s3_options = nil
+end
 
-# Define different storage locations with short, non-descriptive prefixes
-Shrine.storages = {
-  # Temporary cache storage
-  cache: Shrine::Storage::S3.new(prefix: "c", **s3_options),
-  
-  # Default store
-  store: Shrine::Storage::S3.new(prefix: "d", **s3_options),
-  
-  # Product images (p/{store_id}/{product_id}/...)
-  products: Shrine::Storage::S3.new(prefix: "p", **s3_options),
-  
-  # Admin/system images (hero, banners, etc)
-  admin: Shrine::Storage::S3.new(prefix: "a", **s3_options),
-  
-  # User avatars
-  avatars: Shrine::Storage::S3.new(prefix: "u", **s3_options),
-  
-  # Store branding (logos, banners)
-  stores: Shrine::Storage::S3.new(prefix: "s", **s3_options)
-}
+# Define different storage locations
+if s3_options
+  # Use S3 storage when credentials are available
+  Shrine.storages = {
+    # Temporary cache storage
+    cache: Shrine::Storage::S3.new(prefix: "c", public: true, **s3_options),
+    
+    # Default store
+    store: Shrine::Storage::S3.new(prefix: "d", public: true, **s3_options),
+    
+    # Product images (p/{store_id}/{product_id}/...)
+    products: Shrine::Storage::S3.new(prefix: "p", public: true, **s3_options),
+    
+    # Admin/system images (hero, banners, etc)
+    admin: Shrine::Storage::S3.new(prefix: "a", public: true, **s3_options),
+    
+    # User avatars
+    avatars: Shrine::Storage::S3.new(prefix: "u", public: true, **s3_options),
+    
+    # Store branding (logos, banners)
+    stores: Shrine::Storage::S3.new(prefix: "s", public: true, **s3_options)
+  }
+else
+  # Use local file storage as fallback
+  Shrine.storages = {
+    cache: Shrine::Storage::FileSystem.new("public", prefix: "uploads/cache"),
+    store: Shrine::Storage::FileSystem.new("public", prefix: "uploads/store"),
+    products: Shrine::Storage::FileSystem.new("public", prefix: "uploads/products"),
+    admin: Shrine::Storage::FileSystem.new("public", prefix: "uploads/admin"),
+    avatars: Shrine::Storage::FileSystem.new("public", prefix: "uploads/avatars"),
+    stores: Shrine::Storage::FileSystem.new("public", prefix: "uploads/stores")
+  }
+end
 
 Shrine.plugin :activerecord
 Shrine.plugin :cached_attachment_data # for retaining the cached file across form redisplays
@@ -43,18 +64,29 @@ Shrine.plugin :store_dimensions, analyzer: :ruby_vips # for storing image dimens
 Shrine.plugin :derivatives # for creating image derivatives (replaces processing, versions, delete_raw)
 
 # Configure URL options for generating absolute URLs
-# S3/Tigris provides full URLs in all environments
-Shrine.plugin :url_options, 
-  cache: { 
-    public: true,
-    expires_in: 24 * 60 * 60, # 24 hours for cache URLs
-    host: ENV.fetch("CDN_HOST", nil)
-  },
-  store: { 
-    public: true,
-    expires_in: 7 * 24 * 60 * 60, # 7 days for store URLs
-    host: ENV.fetch("CDN_HOST", nil)
-  }
+if s3_options
+  # For Tigris/S3, we need to use presigned URLs since Tigris doesn't support public buckets
+  Shrine.plugin :presign_endpoint, presign_options: { method: :get }
+  Shrine.plugin :url_options, 
+    cache: { 
+      expires_in: 24 * 60 * 60, # 24 hours for cache URLs
+    },
+    store: { 
+      expires_in: 7 * 24 * 60 * 60, # 7 days for store URLs
+    }
+else
+  # For local file storage, we need to set the host for absolute URLs
+  host = ENV.fetch("RAILS_HOST", "http://localhost:5000")
+  Shrine.plugin :url_options, 
+    cache: { 
+      public: true,
+      host: host
+    },
+    store: { 
+      public: true,
+      host: host
+    }
+end
 
 # Configure derivatives (thumbnails and optimized images)
 Shrine.plugin :derivatives, create_on_promote: true

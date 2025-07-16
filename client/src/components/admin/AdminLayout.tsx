@@ -49,12 +49,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </div>
             
             <div className="flex items-center space-x-4">
-              {/* View Store Link */}
+              {/* View Marketplace Link */}
               <Link
                 to="/"
                 className="text-sm text-sand-200 hover:text-white transition-colors"
               >
-                View Store
+                View Marketplace
               </Link>
               
               {/* User Dropdown */}

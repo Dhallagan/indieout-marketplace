@@ -2,9 +2,16 @@ import { useState, useRef } from 'react'
 import { uploadImage, deleteImage, getImageUrl, getOptimizedUrl, validateImage, UploadResponse } from '@/services/uploadService'
 import Button from './Button'
 
+interface LogoData {
+  thumb?: string
+  medium?: string
+  large?: string
+  original?: string
+}
+
 interface ImageUploadProps {
-  images: (string | UploadResponse)[]
-  onChange: (images: (string | UploadResponse)[]) => void
+  images: (string | UploadResponse | LogoData)[]
+  onChange: (images: (string | UploadResponse | LogoData)[]) => void
   maxImages?: number
   label?: string
   helpText?: string
@@ -27,7 +34,37 @@ export default function ImageUpload({
 
     setUploadError(null)
 
-    // Check if adding these files would exceed the max
+    // For single image uploads (like logos), replace the existing image
+    if (maxImages === 1 && files.length > 0) {
+      // We'll replace the existing image, so we only process the first file
+      const file = files[0]
+      setIsUploading(true)
+
+      try {
+        // Validate file
+        const validation = validateImage(file)
+        if (!validation.valid) {
+          throw new Error(validation.error)
+        }
+
+        // Upload file
+        const result = await uploadImage(file)
+        
+        // Replace the entire array with just the new upload
+        onChange([result])
+      } catch (error: any) {
+        setUploadError(error.message || 'Failed to upload image')
+      } finally {
+        setIsUploading(false)
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+      }
+      return
+    }
+
+    // Check if adding these files would exceed the max (for multi-image uploads)
     if (images.length + files.length > maxImages) {
       setUploadError(`Maximum ${maxImages} images allowed`)
       return
@@ -67,13 +104,16 @@ export default function ImageUpload({
     try {
       // For new uploads (UploadResponse objects), use the ID
       // For legacy URLs (strings), extract filename
-      if (typeof image === 'object' && image.id) {
+      if (typeof image === 'object' && 'id' in image && image.id) {
         await deleteImage(image.id)
       } else if (typeof image === 'string') {
         const filename = image.split('/').pop()
         if (filename) {
           await deleteImage(filename)
         }
+      } else if (typeof image === 'object' && !('id' in image)) {
+        // LogoData - we can't delete this from here as it's already attached to the store
+        console.log('Cannot delete logo from here - update store to remove logo')
       }
     } catch (error) {
       console.error('Failed to delete image from server:', error)
@@ -112,20 +152,28 @@ export default function ImageUpload({
         <Button
           variant="secondary"
           onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading || images.length >= maxImages}
+          disabled={isUploading}
           loading={isUploading}
           icon={
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+            images.length > 0 ? (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+            )
           }
         >
-          {isUploading ? 'Uploading...' : 'Add Images'}
+          {isUploading ? 'Uploading...' : images.length > 0 ? 'Replace' : maxImages === 1 ? 'Add Image' : 'Add Images'}
         </Button>
         
-        <span className="ml-3 text-sm text-gray-500">
-          {images.length} / {maxImages} images
-        </span>
+        {maxImages > 1 && (
+          <span className="ml-3 text-sm text-gray-500">
+            {images.length} / {maxImages} images
+          </span>
+        )}
       </div>
 
       {/* Error Message */}
@@ -140,16 +188,23 @@ export default function ImageUpload({
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
           {images.map((image, index) => {
             // Get the appropriate URL for display
-            const displayUrl = typeof image === 'object' 
-              ? getOptimizedUrl(image, 'thumb')
-              : getImageUrl(image)
+            let displayUrl: string
+            if (typeof image === 'string') {
+              displayUrl = getImageUrl(image)
+            } else if ('url' in image) {
+              // UploadResponse
+              displayUrl = getOptimizedUrl(image, 'thumb')
+            } else {
+              // LogoData
+              displayUrl = getImageUrl(image.thumb || image.medium || image.large || image.original || '')
+            }
             
             return (
               <div key={index} className="relative group">
                 <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
                   <img
                     src={displayUrl}
-                    alt={`Product image ${index + 1}`}
+                    alt={`Image ${index + 1}`}
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -194,8 +249,8 @@ export default function ImageUpload({
                 )}
               </div>
               
-              {/* Primary Image Badge */}
-              {index === 0 && (
+              {/* Primary/Logo Badge */}
+              {index === 0 && maxImages > 1 && (
                 <div className="absolute top-2 left-2 bg-green-600 text-white text-xs px-2 py-1 rounded">
                   Primary
                 </div>

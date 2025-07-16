@@ -7,6 +7,7 @@ This document lists all environment variables required for the indieout Rails AP
 ### Core Rails Configuration
 - [ ] `RAILS_MASTER_KEY` - Rails master key from `api/config/master.key`
 - [ ] `DATABASE_URL` - Automatically set by Fly.io when Postgres is attached
+- [ ] `RAILS_HOST` - The public URL of the Rails API (e.g., `https://indieout.fly.dev`)
 
 ### Storage Configuration (Tigris S3-compatible)
 - [ ] `AWS_ACCESS_KEY_ID` - Tigris access key (from `fly storage list`)
@@ -46,6 +47,7 @@ fly storage list  # Copy the access keys
 ```bash
 fly secrets set \
   RAILS_MASTER_KEY=<your-master-key> \
+  RAILS_HOST=https://indieout.fly.dev \
   AWS_ACCESS_KEY_ID=<tigris-access-key> \
   AWS_SECRET_ACCESS_KEY=<tigris-secret-key> \
   BUCKET_NAME=indieout-storage \

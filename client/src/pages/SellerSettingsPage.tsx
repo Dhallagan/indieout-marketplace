@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { UserRole } from '@/types/auth'
 import SellerLayout from '@/components/seller/SellerLayout'
@@ -9,28 +9,75 @@ import Select from '@/components/admin/Select'
 import Checkbox from '@/components/admin/Checkbox'
 import ImageUpload from '@/components/admin/ImageUpload'
 import { FormLayout, FormLayoutGroup } from '@/components/admin/FormLayout'
+import { getStore, updateStore } from '@/services/storeService'
+import { UploadResponse } from '@/services/uploadService'
+// import { useToast } from '@/contexts/ToastContext'
+
+interface LogoData {
+  thumb?: string
+  medium?: string
+  large?: string
+  original?: string
+}
 
 interface StoreData {
   name: string
   description: string
-  logo: string[]
+  logo: (string | UploadResponse | LogoData)[]
   website: string
+  email: string
   phone: string
-  contact_email: string
 }
 
 export default function SellerSettingsPage() {
-  const { hasRole } = useAuth()
+  const { hasRole, user } = useAuth()
+  // const { showToast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [isFetching, setIsFetching] = useState(true)
   const [activeTab, setActiveTab] = useState('store')
   const [storeData, setStoreData] = useState<StoreData>({
-    name: 'IndieOut Store',
-    description: 'Premium outdoor gear for serious adventurers',
+    name: '',
+    description: '',
     logo: [],
-    website: 'https://indieout.com',
-    phone: '(555) 123-4567',
-    contact_email: 'contact@indieout.com'
+    website: '',
+    email: '',
+    phone: ''
   })
+
+  // Fetch store data on mount
+  useEffect(() => {
+    const fetchStoreData = async () => {
+      if (!user?.store?.id) {
+        setIsFetching(false)
+        return
+      }
+
+      try {
+        console.log('Fetching store with ID:', user.store.id)
+        const store = await getStore(user.store.id)
+        console.log('Store data received:', store)
+        console.log('Store logo data:', store.logo)
+        setStoreData({
+          name: store.name || '',
+          description: store.description || '',
+          logo: store.logo ? [store.logo] : [],
+          website: store.website || '',
+          email: store.email || '',
+          phone: store.phone || ''
+        })
+      } catch (error: any) {
+        console.error('Failed to fetch store:', error)
+        // showToast('Failed to load store settings', 'error')
+        if (error.message) {
+          console.error('Error message:', error.message)
+        }
+      } finally {
+        setIsFetching(false)
+      }
+    }
+
+    fetchStoreData()
+  }, [user?.store?.id])
 
   if (!hasRole(UserRole.SELLER_ADMIN)) {
     return (
@@ -47,16 +94,87 @@ export default function SellerSettingsPage() {
     )
   }
 
+  if (!user?.store?.id) {
+    return (
+      <SellerLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold text-charcoal-900">No Store Found</h1>
+          </div>
+          <Card sectioned>
+            <p className="text-clay-600">You need to create a store first.</p>
+          </Card>
+        </div>
+      </SellerLayout>
+    )
+  }
+
   const updateStoreData = (field: keyof StoreData, value: any) => {
     setStoreData(prev => ({ ...prev, [field]: value }))
   }
 
   const handleSave = async () => {
+    if (!user?.store?.id) return
+
     try {
       setIsLoading(true)
-      console.log('Saving store data:', storeData)
-      alert('Settings saved successfully!')
+      
+      // Create FormData for multipart upload
+      const formData = new FormData()
+      formData.append('store[name]', storeData.name)
+      formData.append('store[description]', storeData.description)
+      formData.append('store[website]', storeData.website)
+      formData.append('store[email]', storeData.email)
+      formData.append('store[phone]', storeData.phone)
+      
+      // Handle logo upload
+      if (storeData.logo.length > 0) {
+        const logo = storeData.logo[0]
+        if (typeof logo === 'object' && 'id' in logo) {
+          // New upload - send the cached attachment data
+          formData.append('store[logo]', JSON.stringify({
+            id: logo.id,
+            storage: 'cache',
+            metadata: logo.metadata
+          }))
+        }
+        // If it's already a string URL, don't send it (keep existing)
+      }
+
+      // Send as FormData with proper headers
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/v1/stores/${user.store.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          // Don't set Content-Type - let browser set it with boundary for FormData
+        },
+        body: formData
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update store')
+      }
+
+      // showToast('Store settings saved successfully', 'success')
+      alert('Store settings saved successfully!')
+      
+      // Update local state with response
+      const updatedStore = data.data.store
+      console.log('Updated store data:', updatedStore)
+      console.log('Updated store logo:', updatedStore.logo)
+      setStoreData({
+        name: updatedStore.name || '',
+        description: updatedStore.description || '',
+        logo: updatedStore.logo ? [updatedStore.logo] : [],
+        website: updatedStore.website || '',
+        email: updatedStore.email || '',
+        phone: updatedStore.phone || ''
+      })
     } catch (error: any) {
+      console.error('Save error:', error)
+      // showToast(error.message || 'Failed to save settings', 'error')
       alert(error.message || 'Failed to save settings')
     } finally {
       setIsLoading(false)
@@ -68,6 +186,19 @@ export default function SellerSettingsPage() {
     { id: 'notifications', label: 'Notifications' },
     { id: 'account', label: 'Account' }
   ]
+
+  if (isFetching) {
+    return (
+      <SellerLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold text-charcoal-900">Seller Settings</h1>
+            <p className="text-charcoal-600 mt-1">Loading...</p>
+          </div>
+        </div>
+      </SellerLayout>
+    )
+  }
 
   return (
     <SellerLayout>
@@ -135,7 +266,8 @@ export default function SellerSettingsPage() {
                       images={storeData.logo}
                       onChange={(images) => updateStoreData('logo', images)}
                       maxImages={1}
-                      helpText="Square logo, 300x300px recommended"
+                      label="Upload Logo"
+                      helpText="Square logo, 300x300px recommended. JPG, PNG, or WebP. Max 5MB."
                     />
                   </FormLayoutGroup>
                 </FormLayout>
@@ -148,8 +280,8 @@ export default function SellerSettingsPage() {
                       <TextField
                         label="Contact Email"
                         type="email"
-                        value={storeData.contact_email}
-                        onChange={(e) => updateStoreData('contact_email', e.target.value)}
+                        value={storeData.email}
+                        onChange={(e) => updateStoreData('email', e.target.value)}
                         placeholder="contact@indieout.com"
                       />
                       

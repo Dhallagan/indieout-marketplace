@@ -13,29 +13,18 @@ class Api::V1::UploadsController < ApplicationController
     end
 
     begin
-      # Use the ImageUploader directly
-      uploaded_file = ImageUploader.upload(params[:file], :store)
+      # Upload to cache first - files will be promoted when attached to a record
+      uploaded_file = ImageUploader.upload(params[:file], :cache)
       
-      # Create an attacher to handle derivatives
-      attacher = ImageUploader::Attacher.new
-      attacher.assign(uploaded_file)
-      
-      # Create derivatives
-      attacher.create_derivatives
-      
-      # Get the derivatives
-      derivatives = attacher.derivatives
+      # Don't create derivatives for cached files - they'll be created on promotion
+      derivatives = {}
       
       render json: {
         success: true,
         data: {
           id: uploaded_file.id,
           url: uploaded_file.url,
-          derivatives: {
-            thumb: derivatives[:thumb]&.url,
-            medium: derivatives[:medium]&.url,
-            large: derivatives[:large]&.url
-          },
+          derivatives: derivatives,
           metadata: uploaded_file.metadata,
           size: uploaded_file.size
         }

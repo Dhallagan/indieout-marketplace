@@ -1,7 +1,7 @@
 class StoreSerializer
   include JSONAPI::Serializer
 
-  attributes :id, :name, :slug, :description, :logo, :banner, :website,
+  attributes :id, :name, :slug, :description, :website,
              :is_verified, :is_active, :commission_rate, :total_sales,
              :total_orders, :rating, :review_count, :created_at, :updated_at,
              :verification_status, :email, :phone
@@ -25,5 +25,29 @@ class StoreSerializer
 
   attribute :verified do |store|
     store.verified?
+  end
+  
+  attribute :logo do |store|
+    if store.logo.present?
+      {
+        thumb: store.logo_url(size: :thumb),
+        medium: store.logo_url(size: :medium),
+        large: store.logo_url(size: :large),
+        original: store.logo_url(size: :original)
+      }
+    end
+  end
+  
+  attribute :banner do |store|
+    if store.banner.present?
+      {
+        thumb: store.banner_url(size: :thumb),
+        medium: store.banner_url(size: :medium),
+        large: store.banner_url(size: :large),
+        hero: store.banner_url(size: :hero),
+        hero_mobile: store.banner_url(size: :hero_mobile),
+        original: store.banner_url(size: :original)
+      }
+    end
   end
 end

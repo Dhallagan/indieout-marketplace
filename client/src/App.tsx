@@ -29,6 +29,7 @@ import CheckoutPage from '@/pages/CheckoutPage'
 import CheckoutSuccessPage from '@/pages/CheckoutSuccessPage'
 import GuestOrderTrackingPage from '@/pages/GuestOrderTrackingPage'
 import SearchResultsPage from '@/pages/SearchResultsPage'
+import BrandsPage from '@/pages/BrandsPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import ProtectedRoute from '@/components/ProtectedRoute'
 
@@ -178,6 +179,7 @@ function App() {
             <Route path="/apply-to-sell" element={<SellerApplicationPage />} />
             <Route path="/shop" element={<ShopPage />} />
             <Route path="/search" element={<SearchResultsPage />} />
+            <Route path="/brands" element={<BrandsPage />} />
             <Route path="/shop/products/:slug" element={<ProductDetailPage />} />
             <Route path="/shop/stores/:slug" element={<StoreDetailPage />} />
             <Route path="/cart" element={<CartPage />} />

@@ -119,8 +119,9 @@ class Api::V1::StoresController < ApplicationController
 
   def store_params
     params.require(:store).permit(
-      :name, :description, :logo, :banner, :website,
-      :commission_rate
+      :name, :description, :website,
+      :commission_rate, :logo, :banner,
+      :email, :phone
     )
   end
 

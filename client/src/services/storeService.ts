@@ -26,6 +26,23 @@ class StoreService {
   }
 
   async getStore(id: string): Promise<Store> {
+    const response = await fetch(`${API_BASE_URL}/api/v1/stores/${id}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to fetch store')
+    }
+
+    return data.data.store
+  }
+
+  async getPublicStore(id: string): Promise<Store> {
     const response = await fetch(`${API_BASE_URL}/api/v1/public/stores/${id}`, {
       headers: {
         'Content-Type': 'application/json',
@@ -76,14 +93,22 @@ class StoreService {
     return data.data.store
   }
 
-  async updateStore(id: string, storeData: Partial<Store>): Promise<Store> {
+  async updateStore(id: string, storeData: Partial<Store> | FormData): Promise<Store> {
+    const isFormData = storeData instanceof FormData
+    
+    const headers: HeadersInit = {
+      ...this.getAuthHeaders(),
+    }
+    
+    // Only set Content-Type for JSON, not for FormData
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json'
+    }
+    
     const response = await fetch(`${API_BASE_URL}/api/v1/stores/${id}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...this.getAuthHeaders(),
-      },
-      body: JSON.stringify({ store: storeData }),
+      headers,
+      body: isFormData ? storeData : JSON.stringify({ store: storeData }),
     })
 
     const data = await response.json()
@@ -133,7 +158,8 @@ const storeService = new StoreService()
 export const getStores = () => storeService.getStores()
 export const getPublicStores = () => storeService.getPublicStores()
 export const getStore = (id: string) => storeService.getStore(id)
+export const getPublicStore = (id: string) => storeService.getPublicStore(id)
 export const createStore = (storeData: any) => storeService.createStore(storeData)
-export const updateStore = (id: string, storeData: any) => storeService.updateStore(id, storeData)
+export const updateStore = (id: string, storeData: any | FormData) => storeService.updateStore(id, storeData)
 export const deleteStore = (id: string) => storeService.deleteStore(id)
 export const submitForReview = (id: string) => storeService.submitForReview(id)
