@@ -4,19 +4,14 @@ import ProductGrid from '@/components/ProductGrid'
 import CategoryIcon from '@/components/CategoryIcon'
 import CategorySkeleton from '@/components/CategorySkeleton'
 import { getProducts } from '@/services/productService'
-import { getCategories } from '@/services/categoryService'
+import { useCategories } from '@/contexts/CategoryContext'
 import { Product, Category } from '@/types/api-generated'
-import { categoryCache } from '@/utils/categoryCache'
 
 export default function ShopPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [products, setProducts] = useState<Product[]>([])
-  const [categories, setCategories] = useState<Category[]>(() => {
-    // Initialize with cached categories for instant display
-    return categoryCache.get() || []
-  })
+  const { categories, loading: categoriesLoading } = useCategories()
   const [isLoading, setIsLoading] = useState(true)
-  const [categoriesLoading, setCategoriesLoading] = useState(true)
   const [totalProducts, setTotalProducts] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '')
@@ -58,26 +53,7 @@ export default function ShopPage() {
       if (storeFilter) filters.store_id = storeFilter
       if (sortBy) filters.sort_by = sortBy
       
-      // Load categories separately if not cached
-      if (categories.length === 0) {
-        setCategoriesLoading(true)
-        getCategories().then(categoriesData => {
-          setCategories(categoriesData)
-          categoryCache.set(categoriesData)
-          setCategoriesLoading(false)
-        }).catch(() => {
-          setCategoriesLoading(false)
-        })
-      } else {
-        setCategoriesLoading(false)
-        // Refresh cache in background
-        getCategories().then(categoriesData => {
-          setCategories(categoriesData)
-          categoryCache.set(categoriesData)
-        }).catch(() => {
-          // Ignore errors for background refresh
-        })
-      }
+      // Categories are now loaded from context
       
       const productsResult = await getProducts(filters)
       

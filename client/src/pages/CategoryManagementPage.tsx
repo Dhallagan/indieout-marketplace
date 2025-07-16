@@ -9,9 +9,11 @@ import Select from '@/components/admin/Select'
 import { FormLayout, FormLayoutGroup } from '@/components/admin/FormLayout'
 import CategoryTree from '@/components/CategoryTree'
 import { getCategories, createCategory, updateCategory, deleteCategory } from '@/services/categoryService'
+import { useCategories } from '@/contexts/CategoryContext'
 import { Category } from '@/types/api-generated'
 
 export default function CategoryManagementPage() {
+  const { refreshCategories } = useCategories()
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -70,6 +72,8 @@ export default function CategoryManagementPage() {
     try {
       await deleteCategory(category.id)
       await loadCategories()
+      // Refresh the global category cache
+      await refreshCategories()
     } catch (err) {
       alert('Failed to delete category. Make sure it has no subcategories or products.')
     }
@@ -86,6 +90,8 @@ export default function CategoryManagementPage() {
       
       setIsModalOpen(false)
       await loadCategories()
+      // Refresh the global category cache
+      await refreshCategories()
     } catch (err) {
       alert('Failed to save category')
     } finally {

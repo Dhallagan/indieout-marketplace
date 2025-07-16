@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import ProductGrid from '@/components/ProductGrid'
 import CategoryIcon from '@/components/CategoryIcon'
-import { getCategories } from '@/services/categoryService'
+import { useCategories } from '@/contexts/CategoryContext'
 import { getProducts } from '@/services/productService'
 import { getCurrentHeroContent } from '@/services/heroService'
 import { getPublicStores } from '@/services/storeService'
@@ -26,7 +26,7 @@ interface HeroContent {
 }
 
 export default function HomePage() {
-  const [categories, setCategories] = useState<Category[]>([])
+  const { categories } = useCategories()
   const [stores, setStores] = useState<Store[]>([])
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([])
   const [heroContent, setHeroContent] = useState<HeroContent | null>(null)
@@ -36,9 +36,8 @@ export default function HomePage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Load categories, stores and products in parallel
-        const [categoriesData, storesData, productsResult] = await Promise.all([
-          getCategories(),
+        // Load stores and products in parallel (categories from context)
+        const [storesData, productsResult] = await Promise.all([
           getPublicStores(),
           getProducts()
         ])
@@ -68,7 +67,7 @@ export default function HomePage() {
           })
         }
         
-        setCategories(categoriesData)
+        // Categories are now loaded from context
         setStores(storesData)
         
         // Filter featured products

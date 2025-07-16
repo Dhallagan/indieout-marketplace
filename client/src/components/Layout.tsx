@@ -2,8 +2,8 @@ import { ReactNode, useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useCart } from '@/contexts/CartContext'
+import { useCategories } from '@/contexts/CategoryContext'
 import { UserRole } from '@/types/auth'
-import { getCategories } from '@/services/categoryService'
 import { getProducts } from '@/services/productService'
 import { exitImpersonation } from '@/services/authService'
 import { Category, Product } from '@/types/api-generated'
@@ -16,8 +16,8 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const { user, logout, isAuthenticated, hasRole, setAuthData } = useAuth()
   const { cart } = useCart()
+  const { categories, loading: categoriesLoading } = useCategories()
   const navigate = useNavigate()
-  const [categories, setCategories] = useState<Category[]>([])
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [showUserDropdown, setShowUserDropdown] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -26,19 +26,6 @@ export default function Layout({ children }: LayoutProps) {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const searchRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    loadCategories()
-  }, [])
-
-  const loadCategories = async () => {
-    try {
-      const data = await getCategories()
-      setCategories(data)
-    } catch (error) {
-      console.error('Failed to load categories:', error)
-    }
-  }
 
   // Get display categories (same logic as ShopPage)
   const topLevelCategories = categories.filter(cat => !cat.parent_id)
@@ -527,16 +514,25 @@ export default function Layout({ children }: LayoutProps) {
                 <div className="text-xs font-semibold text-charcoal-500 uppercase tracking-wider mb-2">
                   Categories
                 </div>
-                {displayCategories.map((category) => (
-                  <Link
-                    key={category.id}
-                    to={`/shop?category=${category.slug || category.id}`}
-                    className="block px-3 py-2 rounded-md text-sm text-charcoal-600 hover:text-forest-600 hover:bg-sand-50"
-                    onClick={() => setShowMobileMenu(false)}
-                  >
-                    {category.name}
-                  </Link>
-                ))}
+                {categoriesLoading ? (
+                  // Show skeleton loaders in mobile menu
+                  <>
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="mx-3 my-2 h-8 bg-sand-200 rounded animate-pulse" />
+                    ))}
+                  </>
+                ) : (
+                  displayCategories.map((category) => (
+                    <Link
+                      key={category.id}
+                      to={`/shop?category=${category.slug || category.id}`}
+                      className="block px-3 py-2 rounded-md text-sm text-charcoal-600 hover:text-forest-600 hover:bg-sand-50"
+                      onClick={() => setShowMobileMenu(false)}
+                    >
+                      {category.name}
+                    </Link>
+                  ))
+                )}
               </div>
 
               {/* Account Actions */}
@@ -611,17 +607,26 @@ export default function Layout({ children }: LayoutProps) {
               >
                 ✨ Featured
               </Link>
-              {displayCategories.slice(0, 5).map((category) => (
-                <Link
-                  key={category.id}
-                  to={`/shop?category=${category.slug || category.id}`}
-                  className="text-sm font-medium text-charcoal-600 hover:text-forest-600 whitespace-nowrap transition-colors"
-                >
-                  {category.name}
-                </Link>
-              ))}
+              {categoriesLoading ? (
+                // Show skeleton loaders while categories are loading
+                <>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="h-4 w-20 bg-sand-200 rounded animate-pulse" />
+                  ))}
+                </>
+              ) : (
+                displayCategories.slice(0, 5).map((category) => (
+                  <Link
+                    key={category.id}
+                    to={`/shop?category=${category.slug || category.id}`}
+                    className="text-sm font-medium text-charcoal-600 hover:text-forest-600 whitespace-nowrap transition-colors"
+                  >
+                    {category.name}
+                  </Link>
+                ))
+              )}
               
-              {displayCategories.length > 5 && (
+              {!categoriesLoading && displayCategories.length > 5 && (
                 <Link
                   to="/shop"
                   className="text-sm font-medium text-charcoal-500 hover:text-forest-600 whitespace-nowrap transition-colors"

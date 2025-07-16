@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { UserRole } from '@/types/auth'
-import { getCategories } from '@/services/categoryService'
+import { useCategories } from '@/contexts/CategoryContext'
 import { getMyProducts, updateProduct, CreateProductData, ProductVariant } from '@/services/productService'
 import { productImageService } from '@/services/productImageService'
 import { Category, Product } from '@/types/api-generated'
@@ -22,7 +22,7 @@ export default function ProductEditPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { hasRole } = useAuth()
-  const [categories, setCategories] = useState<Category[]>([])
+  const { categories } = useCategories()
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [product, setProduct] = useState<Product | null>(null)
@@ -82,12 +82,8 @@ export default function ProductEditPage() {
   const loadData = async () => {
     try {
       setIsLoading(true)
-      const [categoriesData, productsData] = await Promise.all([
-        getCategories(),
-        getMyProducts()
-      ])
-      
-      setCategories(categoriesData)
+      // Categories are now loaded from context
+      const productsData = await getMyProducts()
       
       // Find the product to edit
       const productToEdit = productsData.find(p => p.id === id)

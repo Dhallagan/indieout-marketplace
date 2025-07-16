@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { UserRole } from '@/types/auth'
-import { getCategories } from '@/services/categoryService'
+import { useCategories } from '@/contexts/CategoryContext'
 import { createProduct, CreateProductData, ProductVariant } from '@/services/productService'
 import { Category } from '@/types/api-generated'
 import SellerLayout from '@/components/seller/SellerLayout'
@@ -20,7 +20,7 @@ import { FormLayout, FormLayoutGroup } from '@/components/admin/FormLayout'
 export default function ProductCreatePage() {
   const navigate = useNavigate()
   const { hasRole } = useAuth()
-  const [categories, setCategories] = useState<Category[]>([])
+  const { categories } = useCategories()
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState<CreateProductData>({
     name: '',
@@ -60,18 +60,7 @@ export default function ProductCreatePage() {
     )
   }
 
-  useEffect(() => {
-    loadCategories()
-  }, [])
-
-  const loadCategories = async () => {
-    try {
-      const data = await getCategories()
-      setCategories(data)
-    } catch (error) {
-      console.error('Failed to load categories:', error)
-    }
-  }
+  // Categories are now loaded from context
 
   const updateFormData = (field: keyof CreateProductData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
