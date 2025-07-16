@@ -38,11 +38,16 @@ class HeroService {
       },
     })
 
-    const data = await response.json()
-
+    console.log('Hero API response status:', response.status)
+    
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to fetch hero content')
+      const text = await response.text()
+      console.error('Hero API error response:', text)
+      throw new Error(`Hero API failed with status ${response.status}`)
     }
+
+    const data = await response.json()
+    console.log('Hero API response data:', data)
 
     return data.data.hero
   }

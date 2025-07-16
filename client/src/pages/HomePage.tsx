@@ -56,16 +56,16 @@ export default function HomePage() {
             error
           })
           // Use fallback hero content
-          // setHeroContent({
-          //   title: "Handcrafted gear for trail-worthy adventures",
-          //   description: "Connect with independent sellers creating durable, sustainable outdoor equipment for your next journey.",
-          //   cta_primary_text: "Explore the marketplace",
-          //   cta_primary_url: "/shop",
-          //   cta_secondary_text: "Start selling your gear",
-          //   cta_secondary_url: "/apply-to-sell",
-          //   featured_collection_title: "FEATURED COLLECTION",
-          //   featured_collection_subtitle: "Desert Trail Essentials"
-          // })
+          setHeroContent({
+            title: "Handcrafted gear for trail-worthy adventures",
+            description: "Connect with independent sellers creating durable, sustainable outdoor equipment for your next journey.",
+            cta_primary_text: "Explore the marketplace",
+            cta_primary_url: "/shop",
+            cta_secondary_text: "Start selling your gear",
+            cta_secondary_url: "/apply-to-sell",
+            featured_collection_title: "FEATURED COLLECTION",
+            featured_collection_subtitle: "Desert Trail Essentials"
+          })
         }
         
         setCategories(categoriesData)
