@@ -1,6 +1,6 @@
 import { Store, ApiResponse } from '@/types/api-generated'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
 class StoreService {
   private getAuthHeaders() {
@@ -9,7 +9,7 @@ class StoreService {
   }
 
   async getStores(): Promise<Store[]> {
-    const response = await fetch(`${API_BASE_URL}/stores`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/stores`, {
       headers: {
         'Content-Type': 'application/json',
         ...this.getAuthHeaders(),
@@ -26,7 +26,7 @@ class StoreService {
   }
 
   async getStore(id: string): Promise<Store> {
-    const response = await fetch(`${API_BASE_URL}/public/stores/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/public/stores/${id}`, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -42,7 +42,7 @@ class StoreService {
   }
 
   async getPublicStores(): Promise<Store[]> {
-    const response = await fetch(`${API_BASE_URL}/public/stores`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/public/stores`, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -58,7 +58,7 @@ class StoreService {
   }
 
   async createStore(storeData: Partial<Store>): Promise<Store> {
-    const response = await fetch(`${API_BASE_URL}/stores`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/stores`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -77,7 +77,7 @@ class StoreService {
   }
 
   async updateStore(id: string, storeData: Partial<Store>): Promise<Store> {
-    const response = await fetch(`${API_BASE_URL}/stores/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/stores/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -96,7 +96,7 @@ class StoreService {
   }
 
   async deleteStore(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/stores/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/stores/${id}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -112,7 +112,7 @@ class StoreService {
   }
 
   async submitForReview(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/stores/${id}/submit-for-review`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/stores/${id}/submit-for-review`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
