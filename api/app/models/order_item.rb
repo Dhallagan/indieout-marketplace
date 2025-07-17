@@ -19,7 +19,11 @@ class OrderItem < ApplicationRecord
   end
 
   def product_image
-    product_snapshot['images']&.first || product.images&.first
+    if product_snapshot['images']&.first
+      product_snapshot['images'].first
+    elsif product&.product_images&.any?
+      product.product_images.ordered.first&.image_url(size: :medium)
+    end
   end
 
   private
@@ -39,7 +43,7 @@ class OrderItem < ApplicationRecord
       description: product.description,
       short_description: product.short_description,
       base_price: product.base_price,
-      images: product.images,
+      images: product.product_images.ordered.map { |img| img.image_url(size: :medium) },
       category: product.category&.name,
       store: product.store&.name
     }

@@ -1,9 +1,9 @@
 FactoryBot.define do
   factory :category do
-    name { "MyString" }
-    slug { "MyString" }
-    description { "MyText" }
-    image { "MyString" }
+    sequence(:name) { |n| "Category #{n}" }
+    sequence(:slug) { |n| "category-#{n}" }
+    description { "Test category description" }
+    image { "category.png" }
     parent { nil }
   end
 end

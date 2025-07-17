@@ -16,7 +16,11 @@ class Api::V1::GuestOrdersController < ApplicationController
     shipping_address = guest_order_params[:shipping_address]
     billing_address = guest_order_params[:billing_address] || shipping_address
     
+    Rails.logger.info "Guest order params: #{guest_order_params.inspect}"
+    Rails.logger.info "Shipping address: #{shipping_address.inspect}"
+    
     unless valid_address?(shipping_address)
+      Rails.logger.error "Invalid shipping address: #{shipping_address.inspect}"
       return render json: { error: 'Invalid shipping address' }, status: :unprocessable_entity
     end
 
@@ -138,8 +142,19 @@ class Api::V1::GuestOrdersController < ApplicationController
   def valid_address?(address)
     return false unless address.is_a?(Hash)
     
+    # Convert to HashWithIndifferentAccess to handle both string and symbol keys
+    address = address.with_indifferent_access if address.respond_to?(:with_indifferent_access)
+    
     required_fields = %w[firstName lastName email address1 city state zipCode country]
-    required_fields.all? { |field| address[field].present? }
+    missing_fields = required_fields.select { |field| address[field].blank? }
+    
+    if missing_fields.any?
+      Rails.logger.error "Missing required address fields: #{missing_fields.join(', ')}"
+      Rails.logger.error "Address keys present: #{address.keys.join(', ')}"
+      return false
+    end
+    
+    true
   end
 
   def find_or_create_guest_user(email)

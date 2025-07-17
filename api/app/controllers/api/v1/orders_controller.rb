@@ -1,5 +1,5 @@
 class Api::V1::OrdersController < ApplicationController
-  before_action :authenticate_user!
+  before_action :authenticate_user!, except: [:create, :show_by_number]
   before_action :set_order, only: [:show, :cancel]
 
   # GET /api/v1/orders
@@ -54,32 +54,92 @@ class Api::V1::OrdersController < ApplicationController
     )
   end
 
+  # GET /api/v1/orders/by_number/:order_number
+  def show_by_number
+    order = Order.find_by!(order_number: params[:order_number])
+    
+    # Optional: Add email verification for security
+    if params[:email].present? && order.user.email.downcase != params[:email].downcase
+      render json: { error: 'Order not found' }, status: :not_found
+      return
+    end
+    
+    render json: OrderSerializer.new(
+      order, 
+      include: ['store', 'order_items', 'order_items.product']
+    )
+  end
+
   # POST /api/v1/orders
   def create
-    cart = current_user.current_cart
-    
-    if cart.cart_items.empty?
-      return render json: { error: 'Cart is empty' }, status: :unprocessable_entity
-    end
+    # Handle both guest and authenticated users
+    if current_user
+      # Authenticated user flow - use existing cart
+      cart = current_user.current_cart
+      
+      if cart.cart_items.empty?
+        return render json: { error: 'Cart is empty' }, status: :unprocessable_entity
+      end
 
-    # Get shipping address - use provided address or default user address
-    shipping_address = order_params[:shipping_address] || get_default_user_address
-    billing_address = order_params[:billing_address] || shipping_address
+      # Get shipping address - use provided address or default user address
+      shipping_address = order_params[:shipping_address] || get_default_user_address
+      billing_address = order_params[:billing_address] || shipping_address
+    else
+      # Guest user flow
+      unless order_params[:email].present?
+        return render json: { error: 'Email is required for guest checkout' }, status: :unprocessable_entity
+      end
+
+      unless order_params[:cart_items].present? && order_params[:cart_items].any?
+        return render json: { error: 'Cart items are required for guest checkout' }, status: :unprocessable_entity
+      end
+
+      # Guest must provide shipping address
+      shipping_address = order_params[:shipping_address]
+      billing_address = order_params[:billing_address] || shipping_address
+      
+      Rails.logger.info "Guest checkout - order params: #{order_params.inspect}"
+    end
     
     unless shipping_address && valid_address?(shipping_address)
-      return render json: { error: 'No valid shipping address found. Please add an address to your account.' }, status: :unprocessable_entity
+      Rails.logger.error "Shipping address validation failed"
+      Rails.logger.error "Shipping address: #{shipping_address.inspect}"
+      Rails.logger.error "Valid address check: #{valid_address?(shipping_address)}"
+      return render json: { error: 'Invalid shipping address' }, status: :unprocessable_entity
     end
 
     # Check inventory for all items
     insufficient_items = []
-    cart.cart_items.each do |item|
-      if item.product.track_inventory && item.product.inventory < item.quantity
-        insufficient_items << {
-          product_id: item.product.id,
-          product_name: item.product.name,
-          requested: item.quantity,
-          available: item.product.inventory
-        }
+    
+    if current_user
+      # For authenticated users, check cart items
+      cart.cart_items.each do |item|
+        if item.product.track_inventory && item.product.inventory < item.quantity
+          insufficient_items << {
+            product_id: item.product.id,
+            product_name: item.product.name,
+            requested: item.quantity,
+            available: item.product.inventory
+          }
+        end
+      end
+    else
+      # For guest users, check provided cart items
+      order_params[:cart_items].each do |item_data|
+        product = Product.find_by(id: item_data[:product_id])
+        
+        unless product
+          return render json: { error: "Product #{item_data[:product_id]} not found" }, status: :not_found
+        end
+
+        if product.track_inventory && product.inventory < item_data[:quantity].to_i
+          insufficient_items << {
+            product_id: product.id,
+            product_name: product.name,
+            requested: item_data[:quantity],
+            available: product.inventory
+          }
+        end
       end
     end
 
@@ -91,20 +151,75 @@ class Api::V1::OrdersController < ApplicationController
     end
 
     begin
-      orders = Order.create_from_cart!(
-        cart,
-        shipping_address,
-        billing_address,
-        order_params[:payment_method]
-      )
+      if current_user
+        # Authenticated user - use existing cart
+        orders = Order.create_from_cart!(
+          cart,
+          shipping_address,
+          billing_address,
+          order_params[:payment_method]
+        )
+      else
+        # Guest user - create order directly
+        guest_user = find_or_create_guest_user(order_params[:email])
+        
+        # Group cart items by store
+        items_by_store = order_params[:cart_items].group_by do |item_data|
+          Product.find(item_data[:product_id]).store
+        end
+
+        orders = items_by_store.map do |store, items|
+          ActiveRecord::Base.transaction do
+            order = Order.new(
+              user: guest_user,
+              store: store,
+              shipping_address: shipping_address,
+              billing_address: billing_address,
+              payment_method: order_params[:payment_method],
+              status: 'pending',
+              payment_status: 'pending',
+              subtotal: 0,
+              shipping_cost: 0,
+              tax_amount: 0,
+              total_amount: 0
+            )
+
+            # Save order first to generate ID
+            order.save!
+            
+            # Now add items
+            items.each do |item_data|
+              product = Product.find(item_data[:product_id])
+              quantity = item_data[:quantity].to_i
+              
+              order.order_items.create!(
+                product: product,
+                quantity: quantity,
+                unit_price: product.base_price,
+                total_price: quantity * product.base_price,
+                product_snapshot: {
+                  name: product.name,
+                  sku: product.sku,
+                  description: product.description,
+                  base_price: product.base_price,
+                  images: product.product_images.ordered.map { |img| img.image_url(size: :medium) }
+                }
+              )
+            end
+            
+            # Calculate and update totals
+            order.send(:calculate_totals)
+            order.save!
+            order
+          end
+        end
+      end
 
       if orders.any?
-        # Clear the cart after successful order creation
-        cart.clear!
+        # Clear the cart after successful order creation (authenticated users only)
+        cart.clear! if current_user
         
-        # For demo payments, automatically confirm payment
-        # In production, this would happen via Stripe webhook
-        orders.each(&:confirm_payment!)
+        # Don't auto-confirm payment - let Stripe handle it
         
         render json: OrderSerializer.new(
           orders.map(&:reload), 
@@ -216,16 +331,47 @@ class Api::V1::OrdersController < ApplicationController
 
   def order_params
     params.require(:order).permit(
+      :email,  # For guest checkout
       :payment_method,
       shipping_address: [:firstName, :lastName, :email, :phone, :address1, :address2, :city, :state, :zipCode, :country],
-      billing_address: [:firstName, :lastName, :email, :phone, :address1, :address2, :city, :state, :zipCode, :country]
+      billing_address: [:firstName, :lastName, :email, :phone, :address1, :address2, :city, :state, :zipCode, :country],
+      cart_items: [:product_id, :quantity]  # For guest checkout
+    )
+  end
+
+  def find_or_create_guest_user(email)
+    # Try to find existing user by email
+    user = User.find_by(email: email.downcase)
+    
+    if user
+      return user
+    end
+
+    # Create guest user if not found
+    User.create!(
+      email: email.downcase,
+      first_name: 'Guest',
+      last_name: 'User',
+      password: SecureRandom.alphanumeric(16), # Random password
+      role: :consumer,
+      email_verified: false # Guests are not verified
     )
   end
 
   def valid_address?(address)
-    return false unless address.is_a?(Hash)
+    return false unless address.present?
+    
+    # Convert to hash if it's ActionController::Parameters
+    address = address.to_h if address.respond_to?(:to_h)
     
     required_fields = %w[firstName lastName email address1 city state zipCode country]
-    required_fields.all? { |field| address[field].present? }
+    missing_fields = required_fields.select { |field| address[field].blank? }
+    
+    if missing_fields.any?
+      Rails.logger.error "Missing required address fields: #{missing_fields.join(', ')}"
+      return false
+    end
+    
+    true
   end
 end

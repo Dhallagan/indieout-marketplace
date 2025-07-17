@@ -3,9 +3,14 @@ import { Order, ShippingAddress } from '@/types/api-generated'
 const API_BASE = '/api/v1'
 
 export interface CreateOrderRequest {
+  email?: string  // For guest checkout
   shipping_address?: ShippingAddress
   billing_address?: ShippingAddress
   payment_method?: string
+  cart_items?: Array<{  // For guest checkout
+    product_id: string
+    quantity: number
+  }>
 }
 
 export interface OrderListParams {
@@ -152,19 +157,22 @@ export const orderService = {
     return data.data
   },
 
-  // Create order from current cart
+  // Create order from current cart (works for both authenticated and guest users)
   async createOrder(orderData: CreateOrderRequest): Promise<Order[]> {
     const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error('Authentication required')
+    
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    }
+    
+    // Add auth header only if user is authenticated
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
     }
 
     const response = await fetch(`${API_BASE}/orders`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({ order: orderData }),
     })
 
@@ -271,6 +279,63 @@ export const orderService = {
     }
 
     const data = await response.json()
+    return data.data
+  },
+
+  // Get order by order number (for guest checkout confirmation)
+  async getOrderByNumber(orderNumber: string, email?: string): Promise<Order> {
+    const params = new URLSearchParams()
+    if (email) params.set('email', email)
+    
+    const response = await fetch(`${API_BASE}/orders/by_number/${orderNumber}?${params}`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch order')
+    }
+
+    const data = await response.json()
+    
+    // Handle JSONAPI response
+    if (data.data) {
+      const included = data.included || []
+      
+      const orderItemsMap = new Map()
+      const storesMap = new Map()
+      const productsMap = new Map()
+      
+      included.forEach((item: any) => {
+        if (item.type === 'order_item') {
+          orderItemsMap.set(item.id, { id: item.id, ...item.attributes })
+        } else if (item.type === 'store') {
+          storesMap.set(item.id, { id: item.id, ...item.attributes })
+        } else if (item.type === 'product') {
+          productsMap.set(item.id, { id: item.id, ...item.attributes })
+        }
+      })
+      
+      const order = { id: data.data.id, ...data.data.attributes }
+      
+      if (data.data.relationships?.store?.data) {
+        order.store = storesMap.get(data.data.relationships.store.data.id)
+      }
+      
+      if (data.data.relationships?.order_items?.data) {
+        order.order_items = data.data.relationships.order_items.data.map((ref: any) => {
+          const orderItem = orderItemsMap.get(ref.id)
+          if (orderItem && orderItem.product_id) {
+            orderItem.product = productsMap.get(orderItem.product_id)
+          }
+          return orderItem
+        }).filter(Boolean)
+      }
+      
+      return order
+    }
+    
     return data.data
   },
 }

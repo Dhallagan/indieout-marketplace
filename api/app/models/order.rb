@@ -148,7 +148,7 @@ class Order < ApplicationRecord
               sku: cart_item.product.sku,
               description: cart_item.product.description,
               base_price: cart_item.product.base_price,
-              images: cart_item.product.images
+              images: cart_item.product.product_images.ordered.map { |img| img.image_url(size: :medium) }
             }
           )
         end

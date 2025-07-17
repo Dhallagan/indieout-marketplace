@@ -112,12 +112,24 @@ Rails.application.routes.draw do
 
       # Order management (authenticated users)
       resources :orders, only: [:index, :show, :create] do
+        collection do
+          get 'by_number/:order_number', to: 'orders#show_by_number'
+        end
         member do
           patch :cancel
           patch :fulfill  # for store owners
           patch :update_status  # for store owners
         end
       end
+
+      # Payment processing
+      scope :payments do
+        post 'create_intent', to: 'payments#create_intent'
+        post 'confirm', to: 'payments#confirm'
+      end
+      
+      # Stripe webhook (no authentication)
+      post 'stripe/webhook', to: 'payments#webhook'
 
       # Address management (authenticated users)
       resources :addresses do
@@ -126,11 +138,6 @@ Rails.application.routes.draw do
         end
       end
 
-      # Guest checkout (no authentication required)
-      namespace :guest do
-        post 'orders', to: 'guest_orders#create'
-        get 'orders/:order_number', to: 'guest_orders#show'
-      end
 
       # File uploads (seller only)
       resources :uploads, only: [:create]

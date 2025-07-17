@@ -25,8 +25,9 @@ import ShopPage from '@/pages/ShopPage'
 import ProductDetailPage from '@/pages/ProductDetailPage'
 import StoreDetailPage from '@/pages/StoreDetailPage'
 import CartPage from '@/pages/CartPage'
-import CheckoutPage from '@/pages/CheckoutPage'
+import CheckoutPageWithStripe from '@/pages/CheckoutPageWithStripe'
 import CheckoutSuccessPage from '@/pages/CheckoutSuccessPage'
+import OrderConfirmationPage from '@/pages/OrderConfirmationPage'
 import GuestOrderTrackingPage from '@/pages/GuestOrderTrackingPage'
 import SearchResultsPage from '@/pages/SearchResultsPage'
 import BrandsPage from '@/pages/BrandsPage'
@@ -183,8 +184,9 @@ function App() {
             <Route path="/shop/products/:slug" element={<ProductDetailPage />} />
             <Route path="/shop/stores/:slug" element={<StoreDetailPage />} />
             <Route path="/cart" element={<CartPage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/checkout" element={<CheckoutPageWithStripe />} />
             <Route path="/checkout/success/:orderId" element={<CheckoutSuccessPage />} />
+            <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
             <Route path="/track-order" element={<GuestOrderTrackingPage />} />
             <Route path="/404" element={<NotFoundPage />} />
             <Route path="*" element={<Navigate to="/404" replace />} />

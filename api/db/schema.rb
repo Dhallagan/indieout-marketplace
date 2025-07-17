@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_07_16_142443) do
+ActiveRecord::Schema[7.1].define(version: 2025_07_16_231011) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -287,10 +287,12 @@ ActiveRecord::Schema[7.1].define(version: 2025_07_16_142443) do
     t.datetime "updated_at", null: false
     t.boolean "is_active", default: true, null: false
     t.datetime "email_verified_at"
+    t.string "stripe_customer_id"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["email_verification_token"], name: "index_users_on_email_verification_token"
     t.index ["is_active"], name: "index_users_on_is_active"
     t.index ["password_reset_token"], name: "index_users_on_password_reset_token"
+    t.index ["stripe_customer_id"], name: "index_users_on_stripe_customer_id"
   end
 
   add_foreign_key "addresses", "users"
