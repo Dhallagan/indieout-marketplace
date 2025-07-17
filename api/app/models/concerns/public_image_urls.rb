@@ -8,7 +8,14 @@ module PublicImageUrls
     
     # Get the URL without presigning
     url = if size
-      shrine_attachment.public_send(size)&.url
+      # Check if derivative exists, fallback to original if not
+      derivative = shrine_attachment.public_send(size) rescue nil
+      if derivative
+        derivative.url
+      else
+        # Fallback to original if derivative doesn't exist
+        shrine_attachment.url
+      end
     else
       shrine_attachment.url
     end
