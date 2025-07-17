@@ -138,6 +138,9 @@ ActiveRecord::Schema[7.1].define(version: 2025_07_16_231011) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "tracking_number"
+    t.datetime "refunded_at"
+    t.decimal "refund_amount", precision: 10, scale: 2
+    t.text "refund_reason"
     t.index ["order_number"], name: "index_orders_on_order_number", unique: true
     t.index ["payment_status"], name: "index_orders_on_payment_status"
     t.index ["status"], name: "index_orders_on_status"

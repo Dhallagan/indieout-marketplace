@@ -12,6 +12,7 @@ import SellersManagementPage from '@/pages/admin/SellersManagementPage'
 import AdminDashboardPage from '@/pages/admin/AdminDashboardPage'
 import UsersManagementPage from '@/pages/admin/UsersManagementPage'
 import ProductsOversightPage from '@/pages/admin/ProductsOversightPage'
+import AdminOrdersPage from '@/pages/admin/AdminOrdersPage'
 import StoreSetupPage from '@/pages/StoreSetupPage'
 import SellerApplicationPage from '@/pages/SellerApplicationPage'
 import ProductManagementPage from '@/pages/ProductManagementPage'
@@ -109,6 +110,14 @@ function App() {
         element={
           <ProtectedRoute>
             <ProductsOversightPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/orders"
+        element={
+          <ProtectedRoute>
+            <AdminOrdersPage />
           </ProtectedRoute>
         }
       />

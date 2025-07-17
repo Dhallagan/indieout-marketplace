@@ -101,6 +101,17 @@ Rails.application.routes.draw do
             patch :status
           end
         end
+        
+        # Order management
+        resources :orders, only: [:index] do
+          collection do
+            get :stats
+          end
+          member do
+            patch :update_status
+            post :refund
+          end
+        end
       end
 
       # Cart management (authenticated users)
