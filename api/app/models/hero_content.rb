@@ -1,6 +1,7 @@
 class HeroContent < ApplicationRecord
   include ImageUploader::Attachment(:background_image)
   include ImageUploader::Attachment(:featured_collection_image)
+  include PublicImageUrls
   
   validates :title, presence: true, length: { maximum: 200 }
   validates :subtitle, length: { maximum: 300 }
@@ -31,48 +32,28 @@ class HeroContent < ApplicationRecord
   def background_image_url(size: :hero)
     return nil unless background_image.present?
     
-    # Generate presigned URL with expiration for S3/Tigris
-    url = case size.to_sym
-    when :thumb
-      background_image(:thumb)&.url(expires_in: 7.days.to_i)
-    when :medium
-      background_image(:medium)&.url(expires_in: 7.days.to_i)
-    when :large
-      background_image(:large)&.url(expires_in: 7.days.to_i)
-    when :hero
-      background_image(:hero)&.url(expires_in: 7.days.to_i)
-    when :hero_mobile
-      background_image(:hero_mobile)&.url(expires_in: 7.days.to_i)
+    case size.to_sym
+    when :thumb, :medium, :large, :hero, :hero_mobile
+      generate_public_url(background_image, size: size)
     when :original
-      background_image&.url(expires_in: 7.days.to_i)
+      generate_public_url(background_image)
     else
-      background_image(:hero)&.url(expires_in: 7.days.to_i) # Default to hero
+      generate_public_url(background_image, size: :hero) # Default to hero
     end
-    
-    # Ensure URL is absolute
-    ensure_absolute_url(url)
   end
 
   # Get featured collection image URL for specific size
   def featured_collection_image_url(size: :medium)
     return nil unless featured_collection_image.present?
     
-    # Generate presigned URL with expiration for S3/Tigris
-    url = case size.to_sym
-    when :thumb
-      featured_collection_image(:thumb)&.url(expires_in: 7.days.to_i)
-    when :medium
-      featured_collection_image(:medium)&.url(expires_in: 7.days.to_i)
-    when :large
-      featured_collection_image(:large)&.url(expires_in: 7.days.to_i)
+    case size.to_sym
+    when :thumb, :medium, :large
+      generate_public_url(featured_collection_image, size: size)
     when :original
-      featured_collection_image&.url(expires_in: 7.days.to_i)
+      generate_public_url(featured_collection_image)
     else
-      featured_collection_image(:medium)&.url(expires_in: 7.days.to_i) # Default to medium
+      generate_public_url(featured_collection_image, size: :medium) # Default to medium
     end
-    
-    # Ensure URL is absolute
-    ensure_absolute_url(url)
   end
 
   private

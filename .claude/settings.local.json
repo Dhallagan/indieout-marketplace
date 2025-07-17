@@ -30,7 +30,9 @@
       "Bash(rm:*)",
       "Bash(stripe:*)",
       "Bash(brew install:*)",
-      "Bash(docker:*)"
+      "Bash(docker:*)",
+      "Bash(fly ssh console:*)",
+      "Bash(fly storage status:*)"
     ],
     "deny": []
   }

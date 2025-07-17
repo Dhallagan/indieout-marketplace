@@ -65,14 +65,16 @@ Shrine.plugin :derivatives # for creating image derivatives (replaces processing
 
 # Configure URL options for generating absolute URLs
 if s3_options
-  # For Tigris/S3, we need to use presigned URLs since Tigris doesn't support public buckets
-  Shrine.plugin :presign_endpoint, presign_options: { method: :get }
+  # Since the bucket is public, we can use direct URLs instead of presigned URLs
+  # This avoids the Access Denied error from Tigris
   Shrine.plugin :url_options, 
     cache: { 
-      expires_in: 24 * 60 * 60, # 24 hours for cache URLs
+      public: true,
+      host: ENV.fetch("CDN_URL", "https://fly.storage.tigris.dev"),
     },
     store: { 
-      expires_in: 7 * 24 * 60 * 60, # 7 days for store URLs
+      public: true,
+      host: ENV.fetch("CDN_URL", "https://fly.storage.tigris.dev"),
     }
 else
   # For local file storage, we need to set the host for absolute URLs

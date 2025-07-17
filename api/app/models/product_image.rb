@@ -1,5 +1,6 @@
 class ProductImage < ApplicationRecord
   include ImageUploader::Attachment[:image]
+  include PublicImageUrls
   
   belongs_to :product
   
@@ -16,22 +17,18 @@ class ProductImage < ApplicationRecord
   def image_url(size: :medium)
     return nil unless image.present?
     
-    # Generate presigned URL with expiration for S3/Tigris
-    url = case size.to_sym
+    case size.to_sym
     when :thumb
-      image(:thumb)&.url(expires_in: 7.days.to_i)
+      generate_public_url(image, size: :thumb)
     when :medium
-      image(:medium)&.url(expires_in: 7.days.to_i)
+      generate_public_url(image, size: :medium)
     when :large
-      image(:large)&.url(expires_in: 7.days.to_i)
+      generate_public_url(image, size: :large)
     when :original
-      image&.url(expires_in: 7.days.to_i)
+      generate_public_url(image)
     else
-      image(:medium)&.url(expires_in: 7.days.to_i) # Default to medium
+      generate_public_url(image, size: :medium) # Default to medium
     end
-    
-    # Ensure URL is absolute
-    ensure_absolute_url(url)
   end
   
   # Check if this is the primary image
@@ -70,14 +67,5 @@ class ProductImage < ApplicationRecord
   
   def set_cuid_id
     self.id = SecureRandom.urlsafe_base64(12) if id.blank?
-  end
-  
-  def ensure_absolute_url(url)
-    return nil if url.blank?
-    return url if url.start_with?('http://', 'https://')
-    
-    # For relative URLs, prepend the host
-    host = ENV.fetch('RAILS_HOST', 'http://localhost:5000')
-    "#{host}#{url}"
   end
 end
