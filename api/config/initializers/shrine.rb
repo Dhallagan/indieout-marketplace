@@ -23,24 +23,27 @@ end
 # Define different storage locations
 if s3_options
   # Use S3 storage when credentials are available
+  # Add public-read ACL for all uploads to the public bucket
+  upload_options = { acl: "public-read" }
+  
   Shrine.storages = {
     # Temporary cache storage
-    cache: Shrine::Storage::S3.new(prefix: "c", public: true, **s3_options),
+    cache: Shrine::Storage::S3.new(prefix: "c", upload_options: upload_options, **s3_options),
     
     # Default store
-    store: Shrine::Storage::S3.new(prefix: "d", public: true, **s3_options),
+    store: Shrine::Storage::S3.new(prefix: "d", upload_options: upload_options, **s3_options),
     
     # Product images (p/{store_id}/{product_id}/...)
-    products: Shrine::Storage::S3.new(prefix: "p", public: true, **s3_options),
+    products: Shrine::Storage::S3.new(prefix: "p", upload_options: upload_options, **s3_options),
     
     # Admin/system images (hero, banners, etc)
-    admin: Shrine::Storage::S3.new(prefix: "a", public: true, **s3_options),
+    admin: Shrine::Storage::S3.new(prefix: "a", upload_options: upload_options, **s3_options),
     
     # User avatars
-    avatars: Shrine::Storage::S3.new(prefix: "u", public: true, **s3_options),
+    avatars: Shrine::Storage::S3.new(prefix: "u", upload_options: upload_options, **s3_options),
     
     # Store branding (logos, banners)
-    stores: Shrine::Storage::S3.new(prefix: "s", public: true, **s3_options)
+    stores: Shrine::Storage::S3.new(prefix: "s", upload_options: upload_options, **s3_options)
   }
 else
   # Use local file storage as fallback
@@ -65,15 +68,13 @@ Shrine.plugin :derivatives # for creating image derivatives (replaces processing
 
 # Configure URL options for generating absolute URLs
 if s3_options
-  # Since the bucket is public, we can use direct URLs instead of presigned URLs
-  # This avoids the Access Denied error from Tigris
+  # Tigris doesn't support public buckets, so we use presigned URLs
+  # Remove public: true to ensure presigned URLs are generated
   Shrine.plugin :url_options, 
     cache: { 
-      public: true,
       host: ENV.fetch("CDN_URL", "https://fly.storage.tigris.dev"),
     },
     store: { 
-      public: true,
       host: ENV.fetch("CDN_URL", "https://fly.storage.tigris.dev"),
     }
 else

@@ -6,27 +6,28 @@ module PublicImageUrls
   def generate_public_url(shrine_attachment, size: nil)
     return nil unless shrine_attachment.present?
     
-    # Get the URL without presigning
+    # Get the URL with presigning for Tigris
     url = if size
       # Check if derivative exists, fallback to original if not
       derivative = shrine_attachment.public_send(size) rescue nil
       if derivative
-        derivative.url
+        # Generate presigned URL with 7 day expiration for Tigris
+        derivative.url(expires_in: 7 * 24 * 60 * 60) # 7 days
       else
         # Fallback to original if derivative doesn't exist
-        shrine_attachment.url
+        shrine_attachment.url(expires_in: 7 * 24 * 60 * 60) # 7 days
       end
     else
-      shrine_attachment.url
+      shrine_attachment.url(expires_in: 7 * 24 * 60 * 60) # 7 days
     end
     
     return nil if url.blank?
     
-    # For Tigris, construct the direct public URL
+    # For Tigris, return the presigned URL as-is
+    # For local storage, ensure absolute URL
     if ENV["BUCKET_NAME"].present?
-      construct_tigris_public_url(url)
+      url # Return presigned URL for Tigris
     else
-      # Ensure URL is absolute for local storage
       ensure_absolute_url(url)
     end
   end
