@@ -7,8 +7,8 @@ module PublicImageUrls
     return nil unless shrine_attachment.present?
     
     # Get the URL with presigning for Tigris
-    # Set to 99 years (in seconds)
-    expires_in = 99 * 365 * 24 * 60 * 60 # 99 years
+    # Maximum allowed by S3/Tigris is 1 week
+    expires_in = 7 * 24 * 60 * 60 # 7 days (604,800 seconds)
     
     url = if size
       # Check if derivative exists, fallback to original if not
