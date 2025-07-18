@@ -7,18 +7,21 @@ module PublicImageUrls
     return nil unless shrine_attachment.present?
     
     # Get the URL with presigning for Tigris
+    # Set to 99 years (in seconds)
+    expires_in = 99 * 365 * 24 * 60 * 60 # 99 years
+    
     url = if size
       # Check if derivative exists, fallback to original if not
       derivative = shrine_attachment.public_send(size) rescue nil
       if derivative
-        # Generate presigned URL with 7 day expiration for Tigris
-        derivative.url(expires_in: 7 * 24 * 60 * 60) # 7 days
+        # Generate presigned URL with 99 year expiration for Tigris
+        derivative.url(expires_in: expires_in)
       else
         # Fallback to original if derivative doesn't exist
-        shrine_attachment.url(expires_in: 7 * 24 * 60 * 60) # 7 days
+        shrine_attachment.url(expires_in: expires_in)
       end
     else
-      shrine_attachment.url(expires_in: 7 * 24 * 60 * 60) # 7 days
+      shrine_attachment.url(expires_in: expires_in)
     end
     
     return nil if url.blank?
